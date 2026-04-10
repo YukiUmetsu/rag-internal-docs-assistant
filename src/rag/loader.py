@@ -28,6 +28,7 @@ def infer_metadata(path: Path):
     return {
         "source": str(path),
         "file_name": path.name,
+        "source_doc_id": str(path.relative_to(DATA_DIR)),
         "domain": path.parent.name,
         "file_type": path.suffix.replace(".", ""),
         "topic": topic,
