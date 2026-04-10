@@ -1,0 +1,11 @@
+langchain
+langchain-community
+langchain-openai
+faiss-cpu
+pypdf
+python-dotenv
+tiktoken
+numpy<2
+torch==2.2.2
+transformers==4.41.0
+sentence-transformers
