@@ -34,8 +34,9 @@ def retrieve(
     query: str,
     k: int = 8,
     max_chunks_per_source: int = 2,
+    vectorstore_path: str | None = None,
 ) -> List[Document]:
-    vectorstore = load_vectorstore()
+    vectorstore = load_vectorstore(vectorstore_path=vectorstore_path)
 
     docs = vectorstore.similarity_search(query, k=k)
 
