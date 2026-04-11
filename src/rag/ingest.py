@@ -30,25 +30,32 @@ def load_documents_from_paths(paths: List[str]) -> List[Document]:
     return docs
 
 
-def run_full_update() -> None:
+def run_full_update_from_paths(
+    paths: List[str],
+    vectorstore_path: str | None = None,
+) -> None:
+    documents = load_documents_from_paths(paths)
+    run_full_update_from_documents(documents, vectorstore_path=vectorstore_path)
+
+
+def run_full_update_from_documents(documents: list[Document], vectorstore_path: str | None = None) -> None:
     print("Running full update...")
-
-    documents = load_all_documents()
     print(f"Loaded {len(documents)} documents/pages")
-
     chunks = split_documents(documents)
     print(f"Created {len(chunks)} chunks")
-
     print("Building FAISS index from scratch...")
     vectorstore = build_vectorstore(chunks)
-
     print("Saving index...")
-    save_vectorstore(vectorstore)
-
+    save_vectorstore(vectorstore, vectorstore_path=vectorstore_path)
     print("Full update complete.")
 
 
-def run_partial_update(paths: List[str]) -> None:
+def run_full_update() -> None:
+    documents = load_all_documents()
+    run_full_update_from_documents(documents)
+
+
+def run_partial_update(paths: List[str], vectorstore_path: str | None = None) -> None:
     if not paths:
         raise ValueError("Partial update requires at least one file path via --paths")
 
@@ -62,13 +69,13 @@ def run_partial_update(paths: List[str]) -> None:
     print(f"Created {len(chunks)} chunks")
 
     print("Loading existing FAISS index...")
-    vectorstore = load_vectorstore()
+    vectorstore = load_vectorstore(vectorstore_path)
 
     print("Adding new chunks to existing index...")
     vectorstore.add_documents(chunks)
 
     print("Saving updated index...")
-    save_vectorstore(vectorstore)
+    save_vectorstore(vectorstore, vectorstore_path)
 
     print("Partial update complete.")
 
