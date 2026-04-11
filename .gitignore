@@ -4,5 +4,6 @@ __pycache__/
 *.log
 *.DS_Store
 vectorstore/
+.pytest/
 .venv/
 .vscode/
