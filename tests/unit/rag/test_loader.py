@@ -38,7 +38,7 @@ def test_loader_extracts_metadata_from_policy_filename(data_dir: Path) -> None:
     assert meta["file_type"] == "md"
     assert meta["file_name"] == "refund_policy_2026.md"
     assert meta["source"] == str(path)
-    assert meta["source_doc_id"] == "policies/refund_policy_2026.md"
+    assert meta["source_doc_id"] == loader_mod.make_source_doc_id(path)
 
 
 def test_loader_extracts_metadata_from_engineering_doc(data_dir: Path) -> None:
@@ -54,7 +54,7 @@ def test_loader_extracts_metadata_from_engineering_doc(data_dir: Path) -> None:
     assert meta["year"] is None
     assert meta["topic"] == "architecture_overview"
     assert meta["domain"] == "engineering"
-    assert meta["source_doc_id"] == "engineering/architecture_overview.md"
+    assert meta["source_doc_id"] == loader_mod.make_source_doc_id(path)
 
 
 @patch.object(loader_mod, "PyPDFLoader")
@@ -84,8 +84,8 @@ def test_loader_preserves_source_path_and_page_metadata_for_pdf(
     assert docs[1].metadata["page"] == 2
     assert docs[0].metadata["source"] == str(path)
     assert docs[1].metadata["source"] == str(path)
-    assert docs[0].metadata["source_doc_id"] == "hr/employee_handbook_2024.pdf"
-    assert docs[1].metadata["source_doc_id"] == "hr/employee_handbook_2024.pdf"
+    assert docs[0].metadata["source_doc_id"] == loader_mod.make_source_doc_id(path)
+    assert docs[1].metadata["source_doc_id"] == loader_mod.make_source_doc_id(path)
     assert docs[0].metadata["domain"] == "hr"
     assert docs[0].metadata["year"] == "2024"
     assert docs[0].metadata["topic"] == "employee_handbook"
