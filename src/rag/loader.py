@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 from typing import List
 import re
@@ -12,6 +13,10 @@ DATA_DIR = Path("data")
 # ---------------------------
 # Metadata helpers
 # ---------------------------
+def make_source_doc_id(path: Path) -> str:
+    normalized = str(path.resolve()).lower()
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+
 def infer_metadata(path: Path):
     name = path.stem
 
@@ -28,7 +33,7 @@ def infer_metadata(path: Path):
     return {
         "source": str(path),
         "file_name": path.name,
-        "source_doc_id": str(path.relative_to(DATA_DIR)),
+        "source_doc_id": make_source_doc_id(path),
         "domain": path.parent.name,
         "file_type": path.suffix.replace(".", ""),
         "topic": topic,
