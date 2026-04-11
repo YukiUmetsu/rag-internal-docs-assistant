@@ -6,6 +6,16 @@ This project simulates a realistic company knowledge assistant with versioned do
 
 ---
 
+## Development setup
+
+- Create and activate a Python virtual environment (recommended).
+- Install app dependencies: `pip install -r requirements.txt`
+- Install dev/CI dependencies (pinned): `pip install -r requirements_dev.txt`
+- Copy `.env.example` to `.env` and set values when running LLM-backed commands.
+- Run tests from the repo root: `python -m pytest`
+
+---
+
 ## 🚀 Overview
 
 This system allows users to ask natural language questions such as:

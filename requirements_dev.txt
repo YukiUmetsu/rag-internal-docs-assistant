@@ -1,0 +1,6 @@
+# Development / CI — pinned for reproducible installs.
+# After `pip install -r requirements.txt`, run:
+#   pip install -r requirements_dev.txt
+
+pytest==9.0.3
+pytest-cov==6.0.0
