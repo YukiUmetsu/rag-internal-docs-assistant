@@ -212,6 +212,12 @@ Inspired by real-world internal knowledge assistants used in:
 
 ---
 
+## Evaluation Story
+
+(1) I added hybrid retrieval and reranking, then built an eval harness to compare modes. The eval showed that dense retrieval was already strong, hybrid was neutral on my initial dataset, and the cross-encoder reranker regressed exact-term and version-sensitive queries. I used that result to isolate the reranker as the main issue and planned the next iteration around fusion and harder lexical evals.
+
+--
+
 ## 🧠 Author Notes
 
 This project focuses on **quality over quantity**, emphasizing:
