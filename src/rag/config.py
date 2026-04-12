@@ -19,3 +19,10 @@ def get_embedding_model_name() -> str:
     if not value:
         raise ValueError("EMBEDDING_MODEL_NAME is required")
     return value
+
+
+def get_rerank_model_name() -> str:
+    return os.getenv(
+        "RERANK_MODEL_NAME",
+        "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )

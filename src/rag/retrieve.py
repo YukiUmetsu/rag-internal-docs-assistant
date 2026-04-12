@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import DefaultDict, List
 from langchain_core.documents import Document
 
+from src.rag.rerank import rerank_candidates
 from src.rag.vectorstore import load_vectorstore
 
 def get_source_doc_id(doc: Document) -> str:
@@ -40,8 +41,14 @@ def retrieve(
 
     docs = vectorstore.similarity_search(query, k=k)
 
+    reranked_docs = rerank_candidates(
+        query=query,
+        docs=docs,
+        apply_freshness=True,
+    )
+
     return pick_top_chunks_per_source(
-        docs,
+        reranked_docs,
         max_chunks_per_source=max_chunks_per_source,
     )
 
