@@ -92,6 +92,7 @@ def retrieve(
         candidates = rerank_candidates(
             query=query,
             docs=candidates,
+            apply_freshness=False,
         )
 
     # --- Stage 4: Per-source filtering ---

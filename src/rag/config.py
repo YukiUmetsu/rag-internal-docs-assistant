@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_vectorstore_path() -> str:
-    value = os.getenv("VECTORSTORE_PATH")
+    value = os.getenv("VECTORSTORE_PATH", "artifacts/faiss_index")
     if not value:
         raise ValueError("VECTORSTORE_PATH is required")
     return value

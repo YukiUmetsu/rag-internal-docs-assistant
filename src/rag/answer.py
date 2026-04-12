@@ -54,14 +54,25 @@ def build_prompt() -> ChatPromptTemplate:
     )
 
 
-def answer_question(question: str, k: int = 8) -> tuple[str, List[Document]]:
-    docs = retrieve(query=question, k=k)
-    context = format_context(docs)
+from langchain_core.documents import Document
+from typing import List
 
+from src.rag.llm import get_llm
+
+
+def generate_answer_from_docs(
+    question: str,
+    docs: List[Document],
+) -> str:
+    """
+    Generate an answer from already retrieved documents.
+    """
+    context = format_context(docs)
     prompt = build_prompt()
     llm = get_llm()
 
     chain = prompt | llm
+
     response = chain.invoke(
         {
             "question": question,
@@ -69,7 +80,13 @@ def answer_question(question: str, k: int = 8) -> tuple[str, List[Document]]:
         }
     )
 
-    return response.content, docs
+    return response.content
+
+
+def answer_question(question: str, k: int = 8) -> tuple[str, List[Document]]:
+    docs = retrieve(query=question, k=k)
+    content = generate_answer_from_docs(question, docs)
+    return content, docs
 
 
 def parse_args() -> argparse.Namespace:

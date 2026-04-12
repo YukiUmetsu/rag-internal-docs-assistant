@@ -1,0 +1,56 @@
+queries:
+  - id: pto_days_current
+    category: latest_policy_fact
+    query: "How many PTO days do employees get?"
+    expected_sources:
+      - "pto_policy_2026.md"
+    expected_facts:
+      - "18 days"
+
+  - id: refund_window_current
+    category: latest_policy_fact
+    query: "What is the refund window?"
+    expected_sources:
+      - "refund_policy_2026.md"
+    expected_facts:
+      - "30 days"
+
+  - id: retry_attempts_exact
+    category: exact_term
+    query: "How many retry attempts are allowed?"
+    expected_sources:
+      - "payment_flow.md"
+    expected_facts:
+      - "3 times"
+
+  - id: retry_failed_requests_exact
+    category: exact_term
+    query: "retry failed requests"
+    expected_sources:
+      - "payment_flow.md"
+
+  - id: pto_policy_ambiguous
+    category: ambiguous
+    query: "What is the PTO policy?"
+    expected_sources:
+      - "pto_policy_2026.md"
+    expected_facts:
+      - "18 days"
+
+  - id: refund_policy_ambiguous
+    category: ambiguous
+    query: "Tell me about the refund policy"
+    expected_sources:
+      - "refund_policy_2026.md"
+
+  - id: refund_approval_current
+    category: version_sensitive
+    query: "When is manager approval required for refunds?"
+    expected_sources:
+      - "refund_policy_2026.md"
+
+  - id: refund_window_2025
+    category: version_sensitive
+    query: "What was the refund window in 2025?"
+    expected_sources:
+      - "refund_policy_2025.md"

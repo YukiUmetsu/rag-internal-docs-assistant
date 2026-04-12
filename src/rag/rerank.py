@@ -189,7 +189,7 @@ def rerank_candidates(
     query: str,
     docs: Sequence[Document],
     reranker: CrossEncoderReranker | None = None,
-    apply_freshness: bool = True,
+    apply_freshness: bool = False,
 ) -> List[Document]:
     """
     Full reranking pipeline:
