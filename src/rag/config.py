@@ -26,3 +26,6 @@ def get_rerank_model_name() -> str:
         "RERANK_MODEL_NAME",
         "cross-encoder/ms-marco-MiniLM-L-6-v2",
     )
+
+def get_chunks_path() -> str:
+    return os.getenv("CHUNKS_PATH", "artifacts/chunks.jsonl")

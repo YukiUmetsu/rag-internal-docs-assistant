@@ -26,6 +26,7 @@ def test_env() -> None:
     explicit function arguments like `vectorstore_path=...`.
     """
     os.environ.setdefault("EMBEDDING_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
+    os.environ.setdefault("RERANK_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
     os.environ.setdefault("VECTORSTORE_PATH", str(TESTS_ROOT / ".tmp" / "default_faiss_index"))
 
 
@@ -67,3 +68,7 @@ def versioned_policy_fixture_paths(fixtures_root: Path) -> list[str]:
         str(fixtures_root / "policies" / "refund_policy_2025.md"),
         str(fixtures_root / "policies" / "refund_policy_2026.md"),
     ]
+
+@pytest.fixture
+def test_chunks_path(tmp_path: Path) -> Path:
+    return tmp_path / "chunks.jsonl"
