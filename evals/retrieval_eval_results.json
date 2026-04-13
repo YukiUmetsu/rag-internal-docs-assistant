@@ -1,12 +1,12 @@
 {
   "dense_only": {
     "summary": {
-      "num_queries": 8,
+      "num_queries": 10,
       "source_hit_rate": 1.0,
-      "mrr": 0.7708333333333334,
-      "top_1_accuracy": 0.625,
-      "fact_hit_rate": 1.0,
-      "all_facts_hit_rate": 1.0,
+      "mrr": 0.8833333333333334,
+      "top_1_accuracy": 0.8,
+      "fact_hit_rate": 0.9,
+      "all_facts_hit_rate": 0.9,
       "use_hybrid": false,
       "use_rerank": false
     },
@@ -19,224 +19,8 @@
         "fact_hit_rate": 1.0,
         "all_facts_hit_rate": 1.0
       },
-      "exact_term": {
-        "count": 2,
-        "source_hit_rate": 1.0,
-        "mrr": 0.41666666666666663,
-        "top_1_accuracy": 0.0,
-        "fact_hit_rate": 1.0,
-        "all_facts_hit_rate": 1.0
-      },
-      "ambiguous": {
-        "count": 2,
-        "source_hit_rate": 1.0,
-        "mrr": 1.0,
-        "top_1_accuracy": 1.0,
-        "fact_hit_rate": 1.0,
-        "all_facts_hit_rate": 1.0
-      },
-      "version_sensitive": {
-        "count": 2,
-        "source_hit_rate": 1.0,
-        "mrr": 0.6666666666666666,
-        "top_1_accuracy": 0.5,
-        "fact_hit_rate": 1.0,
-        "all_facts_hit_rate": 1.0
-      }
-    },
-    "rows": [
-      {
-        "id": "pto_days_current",
-        "category": "latest_policy_fact",
-        "query": "How many PTO days do employees get?",
-        "expected_sources": [
-          "pto_policy_2026.md"
-        ],
-        "retrieved_sources": [
-          "pto_policy_2026.md",
-          "pto_policy_2025.md",
-          "pto_policy_2026.md",
-          "pto_policy_2025.md"
-        ],
-        "expected_facts": [
-          "18 days"
-        ],
-        "answer": "According to the retrieved context, specifically [Document 3] source=pto_policy_2026.md, employees accrue 18 days of PTO per year (Section ## Paid Time Off (PTO), subsection ### Accrual).",
-        "source_hit": 1,
-        "mrr": 1.0,
-        "top_1_correct": 1,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      },
-      {
-        "id": "refund_window_current",
-        "category": "latest_policy_fact",
-        "query": "What is the refund window?",
-        "expected_sources": [
-          "refund_policy_2026.md"
-        ],
-        "retrieved_sources": [
-          "refund_policy_2026.md",
-          "refund_policy_2025.md",
-          "refund_policy_2026.md",
-          "refund_policy_2026.pdf"
-        ],
-        "expected_facts": [
-          "30 days"
-        ],
-        "answer": "The refund window is 30 days from the original transaction date (Document 1: refund_policy_2026.md).",
-        "source_hit": 1,
-        "mrr": 1.0,
-        "top_1_correct": 1,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      },
-      {
-        "id": "retry_attempts_exact",
-        "category": "exact_term",
-        "query": "How many retry attempts are allowed?",
-        "expected_sources": [
-          "payment_flow.md"
-        ],
-        "retrieved_sources": [
-          "failed_payment_playbook.md",
-          "payment_flow.md",
-          "payment_flow.md",
-          "failed_payment_playbook.md"
-        ],
-        "expected_facts": [
-          "3 times"
-        ],
-        "answer": "According to Document 1, Document 2, and Document 4, the number of retry attempts allowed is 3 (cited in Document 1 as \"safe to retry up to 3 times\", in Document 2 as \"max_attempts = 3\", and in Document 4 as \"`max_attempts = 3`\").",
-        "source_hit": 1,
-        "mrr": 0.5,
-        "top_1_correct": 0,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      },
-      {
-        "id": "retry_failed_requests_exact",
-        "category": "exact_term",
-        "query": "retry failed requests",
-        "expected_sources": [
-          "payment_flow.md"
-        ],
-        "retrieved_sources": [
-          "failed_payment_playbook.md",
-          "failed_payment_playbook.md",
-          "payment_flow.md",
-          "refund_policy_2026.pdf"
-        ],
-        "expected_facts": [],
-        "answer": "To retry failed requests, follow these guidelines: \nRetry up to 3 times with exponential backoff (1 minute, 5 minutes, 15 minutes) for system errors (500, 502, 503) and rate limiting errors (429) (Document 1, Document 2, Document 3). \nDo not retry for stolen_card, lost_card, or fraudulent errors (Document 3). \nFor refund failures due to transient issues, retry and log the failure, notifying the support team (Document 4).",
-        "source_hit": 1,
-        "mrr": 0.3333333333333333,
-        "top_1_correct": 0,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      },
-      {
-        "id": "pto_policy_ambiguous",
-        "category": "ambiguous",
-        "query": "What is the PTO policy?",
-        "expected_sources": [
-          "pto_policy_2026.md"
-        ],
-        "retrieved_sources": [
-          "pto_policy_2026.md",
-          "pto_policy_2025.md",
-          "pto_policy_2026.md",
-          "pto_policy_2025.md"
-        ],
-        "expected_facts": [
-          "18 days"
-        ],
-        "answer": "The PTO policy is as follows: \nEmployees receive paid time off for vacation and personal use, accruing 18 days of PTO per year, which begins on the employee start date and is accrued monthly (Document 3, source=pto_policy_2026.md). \nPTO may be used for vacation, personal matters, and short-term illness. New hires may begin using PTO after 90 days of employment. \nAdditionally, PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance, and may be denied during critical business periods (Document 1, source=pto_policy_2026.md). \nAccrued unused PTO will be paid out upon termination where required by law (Document 1, source=pto_policy_2026.md). \n\nNote: Document 3 (2026) is used as the primary source since it is the most recent policy version.",
-        "source_hit": 1,
-        "mrr": 1.0,
-        "top_1_correct": 1,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      },
-      {
-        "id": "refund_policy_ambiguous",
-        "category": "ambiguous",
-        "query": "Tell me about the refund policy",
-        "expected_sources": [
-          "refund_policy_2026.md"
-        ],
-        "retrieved_sources": [
-          "refund_policy_2026.md",
-          "refund_policy_2025.md",
-          "refund_policy_2026.pdf",
-          "refund_policy_2026.pdf"
-        ],
-        "expected_facts": [],
-        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, source=refund_policy_2026.md, and Document 4, source=refund_policy_2026.pdf), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1). Refunds outside this window may be approved at the discretion of a manager in exceptional cases (Document 4). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4).",
-        "source_hit": 1,
-        "mrr": 1.0,
-        "top_1_correct": 1,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      },
-      {
-        "id": "refund_approval_current",
-        "category": "version_sensitive",
-        "query": "When is manager approval required for refunds?",
-        "expected_sources": [
-          "refund_policy_2026.md"
-        ],
-        "retrieved_sources": [
-          "refund_policy_2026.md",
-          "refund_policy_2025.md",
-          "refund_policy_2026.pdf",
-          "refund_policy_2026.pdf"
-        ],
-        "expected_facts": [],
-        "answer": "Manager approval is required for refunds when the amount is between $100 and $1000. (Document 4, page 2)",
-        "source_hit": 1,
-        "mrr": 1.0,
-        "top_1_correct": 1,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      },
-      {
-        "id": "refund_window_2025",
-        "category": "version_sensitive",
-        "query": "What was the refund window in 2025?",
-        "expected_sources": [
-          "refund_policy_2025.md"
-        ],
-        "retrieved_sources": [
-          "refund_policy_2026.md",
-          "refund_policy_2026.md",
-          "refund_policy_2025.md",
-          "refund_policy_2026.pdf"
-        ],
-        "expected_facts": [],
-        "answer": "The refund window in 2025 was 14 days from the original transaction date (Document 3: refund_policy_2025.md).",
-        "source_hit": 1,
-        "mrr": 0.3333333333333333,
-        "top_1_correct": 0,
-        "fact_hit": 1,
-        "all_facts_hit": 1
-      }
-    ]
-  },
-  "hybrid_only": {
-    "summary": {
-      "num_queries": 8,
-      "source_hit_rate": 1.0,
-      "mrr": 0.7708333333333334,
-      "top_1_accuracy": 0.625,
-      "fact_hit_rate": 1.0,
-      "all_facts_hit_rate": 1.0,
-      "use_hybrid": true,
-      "use_rerank": false
-    },
-    "category_summary": {
-      "latest_policy_fact": {
-        "count": 2,
+      "factual_lookup": {
+        "count": 1,
         "source_hit_rate": 1.0,
         "mrr": 1.0,
         "top_1_accuracy": 1.0,
@@ -244,12 +28,12 @@
         "all_facts_hit_rate": 1.0
       },
       "exact_term": {
-        "count": 2,
+        "count": 3,
         "source_hit_rate": 1.0,
-        "mrr": 0.41666666666666663,
-        "top_1_accuracy": 0.0,
-        "fact_hit_rate": 1.0,
-        "all_facts_hit_rate": 1.0
+        "mrr": 0.8333333333333334,
+        "top_1_accuracy": 0.6666666666666666,
+        "fact_hit_rate": 0.6666666666666666,
+        "all_facts_hit_rate": 0.6666666666666666
       },
       "ambiguous": {
         "count": 2,
@@ -308,7 +92,7 @@
         "expected_facts": [
           "30 days"
         ],
-        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md, as it is the newer policy version.",
+        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md as it is the newer policy version.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -317,10 +101,11 @@
       },
       {
         "id": "retry_attempts_exact",
-        "category": "exact_term",
+        "category": "factual_lookup",
         "query": "How many retry attempts are allowed?",
         "expected_sources": [
-          "payment_flow.md"
+          "payment_flow.md",
+          "failed_payment_playbook.md"
         ],
         "retrieved_sources": [
           "failed_payment_playbook.md",
@@ -329,9 +114,31 @@
           "failed_payment_playbook.md"
         ],
         "expected_facts": [
-          "3 times"
+          "3 times",
+          "max_attempts = 3"
         ],
-        "answer": "According to Document 1, Document 2, and Document 4, the number of retry attempts allowed is 3 (cited in Document 1 as \"safe to retry up to 3 times\", in Document 2 as \"max_attempts = 3\", and in Document 4 as \"`max_attempts = 3`\").",
+        "answer": "According to Document 1, Document 2, and Document 4, the number of retry attempts allowed is 3 (citing Document 1: \"safe to retry up to 3 times\", Document 2: \"max_attempts = 3\", and Document 4: \"max_attempts = 3\").",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "exact_known_issues",
+        "category": "exact_term",
+        "query": "Known Issues",
+        "expected_sources": [
+          "failed_payment_playbook.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md",
+          "refund_policy_2026.md",
+          "payment_failure_spike.md"
+        ],
+        "expected_facts": [],
+        "answer": "Known issues are not explicitly listed in the provided context. However, potential issues can be inferred from the mitigation strategies and escalation paths described in [Document 1] (payment_failure_spike.md) and [Document 2] (failed_payment_playbook.md), as well as the known edge cases in [Document 3] (refund_policy_2026.md). \n\nExamples of issues include:\n- External issues: payment provider failures (Document 1)\n- Internal issues: service scaling, component failures, deployment issues (Document 1)\n- Rate limiting: excessive requests (Document 1)\n- Customer action required: insufficient funds, expired card (Document 2)\n- System retry: transient network errors, processor timeouts (Document 2)\n- Escalation required: unknown error codes, exhausted retry attempts, repeated failures (Document 2)\n- Duplicate refund requests, partial refund conflicts, delayed refund visibility (Document 3)\n\nFor more information, refer to the respective documents: [Document 1], [Document 2], and [Document 3].",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -339,23 +146,46 @@
         "all_facts_hit": 1
       },
       {
-        "id": "retry_failed_requests_exact",
+        "id": "exact_sev2",
         "category": "exact_term",
-        "query": "retry failed requests",
+        "query": "SEV2",
         "expected_sources": [
-          "payment_flow.md"
+          "payment_failure_spike.md"
         ],
         "retrieved_sources": [
-          "failed_payment_playbook.md",
-          "failed_payment_playbook.md",
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
           "payment_flow.md",
-          "refund_policy_2026.pdf"
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [
+          "partial degradation"
+        ],
+        "answer": "SEV2 is mentioned in [Document 1] under the Escalation section, which states that escalation is required when a SEV1 or SEV2 is detected. However, the definition and response for SEV2 are not provided in the retrieved context. The context only provides information on SEV3 and SEV4 in [Document 2]. Therefore, the context is insufficient to provide a detailed answer for SEV2. (Insufficient context, [Document 1], [Document 2])",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 0,
+        "all_facts_hit": 0
+      },
+      {
+        "id": "exact_on_call",
+        "category": "exact_term",
+        "query": "On-Call",
+        "expected_sources": [
+          "payment_failure_spike.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md",
+          "failed_payment_playbook.md"
         ],
         "expected_facts": [],
-        "answer": "To retry failed requests, follow these guidelines: \nRetry up to 3 times with exponential backoff (1 minute, 5 minutes, 15 minutes) for system errors (500, 502, 503) and rate limiting errors (429) (Document 1, Document 2, Document 3). \nDo not retry for stolen_card, lost_card, or fraudulent errors (Document 3). \nFor refund failures due to transient issues, retry and log the failure, notifying the support team (Document 4). \n\nCited documents: failed_payment_playbook.md (Document 1, Document 2), payment_flow.md (Document 3), refund_policy_2026.pdf (Document 4).",
+        "answer": "The On-Call responsibilities are outlined in [Document 1]. The Primary On-Call (Engineering) is responsible for initial triage, incident classification, mitigation actions, and communication updates. The Secondary On-Call assists the primary, investigates deeper issues, and handles overflow tasks. \n\nFor high-severity incidents (SEV1 / SEV2), an Incident Commander is assigned to coordinate the response, manage communication, track progress, and ensure clear ownership. \n\nPlease refer to [Document 1] for more information on On-Call responsibilities.",
         "source_hit": 1,
-        "mrr": 0.3333333333333333,
-        "top_1_correct": 0,
+        "mrr": 1.0,
+        "top_1_correct": 1,
         "fact_hit": 1,
         "all_facts_hit": 1
       },
@@ -447,14 +277,292 @@
       }
     ]
   },
+  "hybrid_only": {
+    "summary": {
+      "num_queries": 10,
+      "source_hit_rate": 1.0,
+      "mrr": 0.8833333333333334,
+      "top_1_accuracy": 0.8,
+      "fact_hit_rate": 0.9,
+      "all_facts_hit_rate": 0.9,
+      "use_hybrid": true,
+      "use_rerank": false
+    },
+    "category_summary": {
+      "latest_policy_fact": {
+        "count": 2,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": 1.0,
+        "all_facts_hit_rate": 1.0
+      },
+      "factual_lookup": {
+        "count": 1,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": 1.0,
+        "all_facts_hit_rate": 1.0
+      },
+      "exact_term": {
+        "count": 3,
+        "source_hit_rate": 1.0,
+        "mrr": 0.8333333333333334,
+        "top_1_accuracy": 0.6666666666666666,
+        "fact_hit_rate": 0.6666666666666666,
+        "all_facts_hit_rate": 0.6666666666666666
+      },
+      "ambiguous": {
+        "count": 2,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": 1.0,
+        "all_facts_hit_rate": 1.0
+      },
+      "version_sensitive": {
+        "count": 2,
+        "source_hit_rate": 1.0,
+        "mrr": 0.6666666666666666,
+        "top_1_accuracy": 0.5,
+        "fact_hit_rate": 1.0,
+        "all_facts_hit_rate": 1.0
+      }
+    },
+    "rows": [
+      {
+        "id": "pto_days_current",
+        "category": "latest_policy_fact",
+        "query": "How many PTO days do employees get?",
+        "expected_sources": [
+          "pto_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "pto_policy_2026.md",
+          "pto_policy_2025.md",
+          "pto_policy_2026.md",
+          "pto_policy_2025.md"
+        ],
+        "expected_facts": [
+          "18 days"
+        ],
+        "answer": "According to Document 3 (pto_policy_2026.md), employees accrue 18 days of PTO per year. (Document 3, section \"Accrual\")",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "refund_window_current",
+        "category": "latest_policy_fact",
+        "query": "What is the refund window?",
+        "expected_sources": [
+          "refund_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2025.md",
+          "refund_policy_2026.md",
+          "refund_policy_2026.pdf"
+        ],
+        "expected_facts": [
+          "30 days"
+        ],
+        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md since it is the newer policy version.",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "retry_attempts_exact",
+        "category": "factual_lookup",
+        "query": "How many retry attempts are allowed?",
+        "expected_sources": [
+          "payment_flow.md",
+          "failed_payment_playbook.md"
+        ],
+        "retrieved_sources": [
+          "failed_payment_playbook.md",
+          "payment_flow.md",
+          "payment_flow.md",
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [
+          "3 times",
+          "max_attempts = 3"
+        ],
+        "answer": "According to Document 1, Document 2, and Document 4, the number of retry attempts allowed is 3 (citing Document 1: \"safe to retry up to 3 times\", Document 2: \"max_attempts = 3\", and Document 4: \"max_attempts = 3\").",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "exact_known_issues",
+        "category": "exact_term",
+        "query": "Known Issues",
+        "expected_sources": [
+          "failed_payment_playbook.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md",
+          "refund_policy_2026.md",
+          "payment_failure_spike.md"
+        ],
+        "expected_facts": [],
+        "answer": "The retrieved context does not provide a direct answer to the question \"Known Issues\". However, it appears that known issues are related to payment failures, and some known edge cases are described in [Document 3] source=refund_policy_2026.md. \n\nSome known issues and edge cases include:\n- Duplicate Refund Requests ([Document 3])\n- Partial Refund Conflicts ([Document 3])\n- Delayed Refund Visibility ([Document 3])\n- Payment failures due to external or internal issues ([Document 1] and [Document 4])\n- Failed payments requiring customer action, system retry, or escalation ([Document 2]) \n\nFor more information, please refer to the specific documents: [Document 1] source=payment_failure_spike.md, [Document 2] source=failed_payment_playbook.md, and [Document 3] source=refund_policy_2026.md.",
+        "source_hit": 1,
+        "mrr": 0.5,
+        "top_1_correct": 0,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "exact_sev2",
+        "category": "exact_term",
+        "query": "SEV2",
+        "expected_sources": [
+          "payment_failure_spike.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
+          "payment_flow.md",
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [
+          "partial degradation"
+        ],
+        "answer": "SEV2 is mentioned in [Document 1] under the Escalation section. According to this document, when a SEV1 or SEV2 is detected, the issue should be escalated. However, the definition and response for SEV2 are not provided in the retrieved context. The context only provides definitions for SEV3 and SEV4 in [Document 2]. Therefore, the information is insufficient to provide a detailed answer about SEV2.",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 0,
+        "all_facts_hit": 0
+      },
+      {
+        "id": "exact_on_call",
+        "category": "exact_term",
+        "query": "On-Call",
+        "expected_sources": [
+          "payment_failure_spike.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md",
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [],
+        "answer": "The On-Call responsibilities are outlined in [Document 1]. The Primary On-Call (Engineering) is responsible for initial triage, incident classification, mitigation actions, and communication updates. The Secondary On-Call assists the primary, investigates deeper issues, and handles overflow tasks. \n\nFor high-severity incidents (SEV1 / SEV2), an Incident Commander is assigned to coordinate the response, manage communication, track progress, and ensure clear ownership. \n\nPlease refer to [Document 1] for more information on On-Call responsibilities.",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "pto_policy_ambiguous",
+        "category": "ambiguous",
+        "query": "What is the PTO policy?",
+        "expected_sources": [
+          "pto_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "pto_policy_2026.md",
+          "pto_policy_2025.md",
+          "pto_policy_2026.md",
+          "pto_policy_2025.md"
+        ],
+        "expected_facts": [
+          "18 days"
+        ],
+        "answer": "The PTO policy is as follows: \nEmployees receive paid time off for vacation and personal use, accruing 18 days of PTO per year, which begins on the employee start date and is accrued monthly (Document 3, source=pto_policy_2026.md). \nPTO may be used for vacation, personal matters, and short-term illness. New hires may begin using PTO after 90 days of employment. \nAdditionally, PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance, and may be denied during critical business periods (Document 1, source=pto_policy_2026.md). \nAccrued unused PTO will be paid out upon termination where required by law (Document 1, source=pto_policy_2026.md). \n\nNote: Document 3 (2026) is used for accrual and usage, while Document 1 (2026) is used for approval guidelines and termination payout, as they are the most recent policies.",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "refund_policy_ambiguous",
+        "category": "ambiguous",
+        "query": "Tell me about the refund policy",
+        "expected_sources": [
+          "refund_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2025.md",
+          "refund_policy_2026.pdf",
+          "refund_policy_2026.pdf"
+        ],
+        "expected_facts": [],
+        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, 3, and 4, year 2026), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1 and 2). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4). In exceptional cases, refunds outside the standard policy window may be approved at the discretion of a manager (Document 4).",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "refund_approval_current",
+        "category": "version_sensitive",
+        "query": "When is manager approval required for refunds?",
+        "expected_sources": [
+          "refund_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2025.md",
+          "refund_policy_2026.pdf",
+          "refund_policy_2026.pdf"
+        ],
+        "expected_facts": [],
+        "answer": "Manager approval is required for refunds when the amount is between $100 and $1000. (Document 4, page 2)",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "refund_window_2025",
+        "category": "version_sensitive",
+        "query": "What was the refund window in 2025?",
+        "expected_sources": [
+          "refund_policy_2025.md"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2026.md",
+          "refund_policy_2025.md",
+          "refund_policy_2026.pdf"
+        ],
+        "expected_facts": [],
+        "answer": "The refund window in 2025 was 14 days from the original transaction date (Document 3: refund_policy_2025.md).",
+        "source_hit": 1,
+        "mrr": 0.3333333333333333,
+        "top_1_correct": 0,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      }
+    ]
+  },
   "hybrid_rerank": {
     "summary": {
-      "num_queries": 8,
-      "source_hit_rate": 0.875,
-      "mrr": 0.53125,
-      "top_1_accuracy": 0.25,
-      "fact_hit_rate": 0.875,
-      "all_facts_hit_rate": 0.875,
+      "num_queries": 10,
+      "source_hit_rate": 1.0,
+      "mrr": 0.775,
+      "top_1_accuracy": 0.6,
+      "fact_hit_rate": 1.0,
+      "all_facts_hit_rate": 0.9,
       "use_hybrid": true,
       "use_rerank": true
     },
@@ -467,13 +575,21 @@
         "fact_hit_rate": 1.0,
         "all_facts_hit_rate": 1.0
       },
+      "factual_lookup": {
+        "count": 1,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": 1.0,
+        "all_facts_hit_rate": 0.0
+      },
       "exact_term": {
-        "count": 2,
-        "source_hit_rate": 0.5,
-        "mrr": 0.25,
-        "top_1_accuracy": 0.0,
-        "fact_hit_rate": 0.5,
-        "all_facts_hit_rate": 0.5
+        "count": 3,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": 1.0,
+        "all_facts_hit_rate": 1.0
       },
       "ambiguous": {
         "count": 2,
@@ -509,7 +625,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "According to the retrieved context, specifically [Document 1] (pto_policy_2026.md), employees accrue 18 days of PTO per year.",
+        "answer": "According to the retrieved context, specifically [Document 1] (pto_policy_2026.md), employees accrue 18 days of PTO per year. (Document 1, section \"### Accrual\")",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -541,7 +657,7 @@
       },
       {
         "id": "retry_attempts_exact",
-        "category": "exact_term",
+        "category": "factual_lookup",
         "query": "How many retry attempts are allowed?",
         "expected_sources": [
           "payment_flow.md",
@@ -559,29 +675,73 @@
         ],
         "answer": "According to Document 1 (failed_payment_playbook.md) and Document 2 (payment_flow.md), the maximum number of retry attempts allowed is 3 (max_attempts = 3). [Document 1, Document 2]",
         "source_hit": 1,
-        "mrr": 0.5,
-        "top_1_correct": 0,
-        "fact_hit": 0,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
         "all_facts_hit": 0
       },
       {
-        "id": "retry_failed_requests_exact",
+        "id": "exact_known_issues",
         "category": "exact_term",
-        "query": "retry failed requests",
+        "query": "Known Issues",
         "expected_sources": [
-          "payment_flow.md"
+          "failed_payment_playbook.md"
         ],
         "retrieved_sources": [
-          "refund_policy_2026.pdf",
-          "refund_policy_2025.md",
           "failed_payment_playbook.md",
-          "payment_failure_spike.md"
+          "refund_policy_2026.md",
+          "payment_failure_spike.md",
+          "refund_policy_2025.md"
         ],
         "expected_facts": [],
-        "answer": "Retry failed requests only if the failure is considered transient (Document 1, page 3, and Document 2). This is to prevent duplicate refunds and ensure safe retries during network failures (Document 2). The type of failure should be identified (Document 3) to determine if a retry is applicable. Additionally, the retry system and webhook validation should be checked (Document 4) to ensure proper handling of retries.",
-        "source_hit": 0,
-        "mrr": 0.0,
-        "top_1_correct": 0,
+        "answer": "Known issues include:\n\n1. Duplicate Failures (Document 1) - caused by repeated retries without a state update.\n2. Webhook Delays (Document 1) - caused by queue backlog, resulting in delayed order confirmation.\n3. Duplicate Refund Requests (Document 2) - caused by repeated submissions due to network retries or UI issues.\n4. Partial Refund Conflicts (Document 2) - caused by multiple partial refunds exceeding the total amount.\n5. Delayed Refund Visibility (Document 2) - caused by bank processing delays.\n6. Duplicate Refund Attempts (Document 4) - caused by repeated requests due to retries or UI issues.\n\nNote: Document 2 (refund_policy_2026.md) is preferred over Document 4 (refund_policy_2025.md) as it is the newer policy version.",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "exact_sev2",
+        "category": "exact_term",
+        "query": "SEV2",
+        "expected_sources": [
+          "payment_failure_spike.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md",
+          "refund_policy_2025.md"
+        ],
+        "expected_facts": [
+          "partial degradation"
+        ],
+        "answer": "SEV2 is defined as a High severity incident, characterized by a partial degradation of the payment system, a failure rate between 5 and 20 percent, and significant user impact. The response to a SEV2 incident requires a response within 15 minutes and the assignment of an on-call engineer (Document 1).",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": 1,
+        "all_facts_hit": 1
+      },
+      {
+        "id": "exact_on_call",
+        "category": "exact_term",
+        "query": "On-Call",
+        "expected_sources": [
+          "payment_failure_spike.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md",
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [],
+        "answer": "The On-Call responsibilities are outlined in [Document 1]. The Primary On-Call (Engineering) is responsible for initial triage, incident classification, mitigation actions, and communication updates. The Secondary On-Call assists the primary and investigates deeper issues. For high-severity incidents (SEV1/SEV2), an Incident Commander is assigned to coordinate the response, manage communication, track progress, and ensure clear ownership.",
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
         "fact_hit": 1,
         "all_facts_hit": 1
       },
@@ -601,7 +761,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "The PTO policy is as follows: \n- Employees accrue 18 days of PTO per year (Document 2, source=pto_policy_2026.md).\n- Accrual begins on the employee start date and is accrued monthly (Document 2).\n- PTO may be used for vacation, personal matters, and short-term illness (Document 2).\n- New hires may begin using PTO after 90 days of employment (Document 2).\n- PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance (Document 4, source=pto_policy_2026.md).\n- Accrued unused PTO will be paid out upon termination where required by law (Document 4). \n\nThis information is based on the most recent policy versions available (Documents 2 and 4, both from 2026).",
+        "answer": "The PTO policy is as follows: \nEmployees accrue 18 days of PTO per year, accrual begins on the employee start date, and PTO is accrued monthly (Document 2). \nPTO may be used for vacation, personal matters, and short-term illness. \nNew hires may begin using PTO after 90 days of employment (Document 2). \nPTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance (Document 4). \nAccrued unused PTO will be paid out upon termination where required by law (Document 4). \n\nNote: The 2026 policy (Document 2 and Document 4) is used as it is the newer version.",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -622,7 +782,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "The refund policy, as per the latest documents (Document 2, Document 3, and Document 4), states that a refund can be issued if certain conditions are met. However, the specific eligibility criteria are only fully outlined in Document 1 (refund_policy_2025.md), which states that a refund is eligible if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window of 14 days from the original transaction date.\n\nAccording to the newer policy versions (Document 4, page 4), refunds should not be issued if the transaction is under investigation, and exceptional cases outside the standard policy window may be approved at the discretion of a manager. \n\nRefund guidelines are outlined in Documents 2 and 3, but the key details are in Document 1 and updated considerations in Document 4. (Documents 1, 2, 3, and 4).",
+        "answer": "The refund policy, as per the latest documents (Document 2, Document 3, and Document 4), states that a refund can be issued if certain conditions are met. According to Document 1 (2025 policy), these conditions include a valid transaction, successful payment capture, and a request within the allowed refund window, which is 14 days from the original transaction date (Document 1). However, Document 4 (2026 policy) suggests that refunds outside this window may be approved in exceptional cases at a manager's discretion. Refund requests should also be reviewed for unusual patterns, such as high refund frequency or large transaction amounts (Document 4). \n\nReferences: \n- Document 1: refund_policy_2025.md\n- Document 2: refund_policy_2026.md\n- Document 3: refund_policy_2026.pdf\n- Document 4: refund_policy_2026.pdf",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -664,7 +824,7 @@
           "refund_policy_2025.md"
         ],
         "expected_facts": [],
-        "answer": "The refund window in 2025 is not explicitly stated in the provided documents from 2025. Although Document 4 (refund_policy_2025.md) discusses various aspects of refund policies, it does not specify the refund window. Therefore, the context is insufficient to answer the question.",
+        "answer": "The refund window in 2025 is not explicitly stated in the provided documents from 2025. However, the refund window is mentioned in the 2026 documents, but since the question specifically asks for 2025, we cannot accurately determine the refund window for 2025 based on the given context. (Insufficient information from Document 4, source=refund_policy_2025.md)",
         "source_hit": 1,
         "mrr": 0.25,
         "top_1_correct": 0,

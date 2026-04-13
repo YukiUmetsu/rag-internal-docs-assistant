@@ -25,11 +25,25 @@ queries:
       - "3 times"
       - "max_attempts = 3"
 
-  - id: retry_failed_requests_exact
+  - id: exact_known_issues
     category: exact_term
-    query: "retry failed requests"
+    query: "Known Issues"
     expected_sources:
-      - "payment_flow.md"
+      - "failed_payment_playbook.md"
+
+  - id: exact_sev2
+    category: exact_term
+    query: "SEV2"
+    expected_sources:
+      - "payment_failure_spike.md"
+    expected_facts:
+      - "partial degradation"
+
+  - id: exact_on_call
+    category: exact_term
+    query: "On-Call"
+    expected_sources:
+      - "payment_failure_spike.md"
 
   - id: pto_policy_ambiguous
     category: ambiguous
