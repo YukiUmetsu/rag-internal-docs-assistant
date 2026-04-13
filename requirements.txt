@@ -12,3 +12,5 @@ sentence-transformers
 langchain-groq
 langchain-huggingface
 rank_bm25
+fastapi
+uvicorn

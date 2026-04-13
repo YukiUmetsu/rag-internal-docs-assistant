@@ -8,14 +8,13 @@ from langchain_groq import ChatGroq
 
 load_dotenv()
 
-GROQ_MODEL_NAME = os.getenv("GROQ_MODEL_NAME")
-
-if not GROQ_MODEL_NAME:
-    raise ValueError("GROQ_MODEL_NAME is not set in .env")
-
 
 def get_llm() -> ChatGroq:
+    model_name = os.getenv("GROQ_MODEL_NAME")
+    if not model_name:
+        raise ValueError("GROQ_MODEL_NAME is not set in .env")
+
     return ChatGroq(
-        model=GROQ_MODEL_NAME,
+        model=model_name,
         temperature=0,
     )

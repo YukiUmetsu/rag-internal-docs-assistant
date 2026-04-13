@@ -16,6 +16,34 @@ This project simulates a realistic company knowledge assistant with versioned do
 
 ---
 
+## Web Demo
+
+Run the FastAPI backend:
+
+```bash
+uvicorn src.backend.app.main:app --reload
+```
+
+Run the React frontend:
+
+```bash
+cd src/frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` and try:
+
+- "What was the refund window in 2025?"
+- "How many PTO days do employees get?"
+- "Known Issues"
+- "SEV2"
+- "When is manager approval required for refunds?"
+
+The UI supports live generation, mock safe mode, and retrieval-only inspection. Mock mode is useful for demos when Groq quota is unavailable.
+
+---
+
 ## 🚀 Overview
 
 This system allows users to ask natural language questions such as:
@@ -97,7 +125,19 @@ Using structured evaluation datasets.
 
 ---
 
-### 4. Retrieval
+### 6. Full-Stack Demo
+
+The repo includes a React + FastAPI demo app:
+
+- clean assistant interface
+- source citations
+- retrieval debug panel
+- live/mock/retrieval-only modes
+- backend health and artifact status
+
+---
+
+### 7. Retrieval
 
 - Query → embedding
 - Retrieve top-k relevant chunks
@@ -105,14 +145,14 @@ Using structured evaluation datasets.
 
 ---
 
-### 5. Generation
+### 8. Generation
 
 - LLM generates answer using retrieved context
 - Includes grounding in source documents
 
 ---
 
-### 6. (Optional) Corrective RAG
+### 9. (Optional) Corrective RAG
 
 - Detect weak retrieval
 - Rewrite query

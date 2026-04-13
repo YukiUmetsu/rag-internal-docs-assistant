@@ -1,5 +1,4 @@
 from __future__ import annotations
-from langchain_core.documents.base import Document
 
 import argparse
 from typing import List
@@ -14,7 +13,7 @@ from src.rag.retrieve import retrieve
 def format_context(docs: List[Document]) -> str:
     parts: List[str] = []
 
-    for i, doc in enumerate[Document](docs, start=1):
+    for i, doc in enumerate(docs, start=1):
         source = doc.metadata.get("file_name", "unknown")
         domain = doc.metadata.get("domain", "unknown")
         year = doc.metadata.get("year", "unknown")
@@ -54,12 +53,6 @@ def build_prompt() -> ChatPromptTemplate:
     )
 
 
-from langchain_core.documents import Document
-from typing import List
-
-from src.rag.llm import get_llm
-
-
 def generate_answer_from_docs(
     question: str,
     docs: List[Document],
@@ -84,7 +77,7 @@ def generate_answer_from_docs(
 
 
 def answer_question(question: str, k: int = 8) -> tuple[str, List[Document]]:
-    docs = retrieve(query=question, k=k)
+    docs = retrieve(query=question, final_k=k)
     content = generate_answer_from_docs(question, docs)
     return content, docs
 

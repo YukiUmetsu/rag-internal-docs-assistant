@@ -8,3 +8,5 @@ vectorstore/
 .venv/
 .vscode/
 artifacts/
+node_modules/
+dist/
