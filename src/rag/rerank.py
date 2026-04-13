@@ -134,9 +134,9 @@ def compute_group_metadata_adjustment(
     query: str,
     item: RerankedDocument,
     group_items: Sequence[RerankedDocument],
-    max_freshness_bonus: float = 0.02,
-    exact_year_match_bonus: float = 0.05,
-    year_mismatch_penalty: float = 0.03,
+    max_freshness_bonus: float = 0.1,
+    exact_year_match_bonus: float = 0.1,
+    year_mismatch_penalty: float = 0.05,
 ) -> float:
     """
     Compute a small metadata-based score adjustment within a comparable group.
@@ -237,7 +237,7 @@ def rerank_candidates(
     active_reranker = reranker or CrossEncoderReranker()
     ranked = active_reranker.rerank_with_scores(query, docs)
 
-    if apply_metadata_score_adjustment:
+    if use_metadata_score_adjustment:
         ranked = apply_metadata_score_adjustment(query, ranked)
 
     return [item.doc for item in ranked]

@@ -67,7 +67,15 @@ queries:
       - "refund_policy_2026.pdf"
 
   - id: refund_window_2025
-    category: version_sensitive
+    category: exact_year
     query: "What was the refund window in 2025?"
     expected_sources:
       - "refund_policy_2025.md"
+
+  - id: pto_days_2025
+    category: exact_year
+    query: "How many PTO days did employees get in 2025?"
+    expected_sources:
+      - "pto_policy_2025.md"
+    expected_facts:
+      - "15 days"
