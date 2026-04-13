@@ -54,6 +54,7 @@ def all_facts_hit(answer: str, expected_facts: list[str]) -> int:
 def evaluate_mode(
     gold_queries: list[dict[str, Any]],
     *,
+    mode_name: str,
     vectorstore_path: str,
     chunks_path: str,
     use_hybrid: bool,
@@ -61,6 +62,7 @@ def evaluate_mode(
     final_k: int = 4,
     initial_k: int = 8,
     max_chunks_per_source: int = 2,
+    debug_log_path: str | None = None,
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
 
@@ -97,6 +99,11 @@ def evaluate_mode(
             chunks_path=chunks_path,
             use_hybrid=use_hybrid,
             use_rerank=use_rerank,
+            debug_log_path=debug_log_path,
+            debug_context={
+                "query_id": query_id,
+                "mode_name": mode_name,
+            },
         )
 
         retrieved_sources = [
@@ -208,6 +215,7 @@ def main() -> None:
     parser.add_argument("--final-k", type=int, default=4)
     parser.add_argument("--initial-k", type=int, default=8)
     parser.add_argument("--max-chunks-per-source", type=int, default=2)
+    parser.add_argument("--debug-log-path", default="artifacts/evals/rerank_debug.jsonl")
     args = parser.parse_args()
 
     gold_queries = load_gold_queries(args.gold_path)
@@ -215,6 +223,7 @@ def main() -> None:
     results = {
         "dense_only": evaluate_mode(
             gold_queries,
+            mode_name="dense_only",
             vectorstore_path=args.vectorstore_path,
             chunks_path=args.chunks_path,
             use_hybrid=False,
@@ -222,9 +231,11 @@ def main() -> None:
             final_k=args.final_k,
             initial_k=args.initial_k,
             max_chunks_per_source=args.max_chunks_per_source,
+            debug_log_path=args.debug_log_path,
         ),
         "hybrid_only": evaluate_mode(
             gold_queries,
+            mode_name="hybrid_only",
             vectorstore_path=args.vectorstore_path,
             chunks_path=args.chunks_path,
             use_hybrid=True,
@@ -232,9 +243,11 @@ def main() -> None:
             final_k=args.final_k,
             initial_k=args.initial_k,
             max_chunks_per_source=args.max_chunks_per_source,
+            debug_log_path=args.debug_log_path,
         ),
         "hybrid_rerank": evaluate_mode(
             gold_queries,
+            mode_name="hybrid_rerank",
             vectorstore_path=args.vectorstore_path,
             chunks_path=args.chunks_path,
             use_hybrid=True,
@@ -242,6 +255,7 @@ def main() -> None:
             final_k=args.final_k,
             initial_k=args.initial_k,
             max_chunks_per_source=args.max_chunks_per_source,
+            debug_log_path=args.debug_log_path,
         ),
     }
 

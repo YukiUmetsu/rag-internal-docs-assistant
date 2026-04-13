@@ -84,7 +84,7 @@
         "expected_facts": [
           "30 days"
         ],
-        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md since it is the newer policy version.",
+        "answer": "The refund window is 30 days from the original transaction date (Document 1: refund_policy_2026.md).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -128,7 +128,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "To retry failed requests, follow these guidelines: \nRetry up to 3 times with exponential backoff (1 minute, 5 minutes, 15 minutes) for system errors (500, 502, 503) and rate limiting errors (429) (Document 1, Document 2, Document 3). \nDo not retry for stolen_card, lost_card, or fraudulent errors (Document 3). \nFor refund failures due to transient issues, log the failure, notify the support team, and retry (Document 4).",
+        "answer": "To retry failed requests, follow these guidelines: \nRetry up to 3 times with exponential backoff (1 minute, 5 minutes, 15 minutes) for system errors (500, 502, 503) and rate limiting errors (429) (Document 1, Document 2, Document 3). \nDo not retry for stolen_card, lost_card, or fraudulent errors (Document 3). \nFor refund failures due to transient issues, retry and log the failure, notifying the support team (Document 4).",
         "source_hit": 1,
         "mrr": 0.3333333333333333,
         "top_1_correct": 0,
@@ -151,7 +151,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "The PTO policy is as follows: \nEmployees receive paid time off for vacation and personal use, accruing 18 days of PTO per year, which begins on the employee start date and is accrued monthly (Document 3, source=pto_policy_2026.md). \nPTO may be used for vacation, personal matters, and short-term illness. New hires may begin using PTO after 90 days of employment. \nAdditionally, PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance, and may be denied during critical business periods (Document 1, source=pto_policy_2026.md). \nAccrued unused PTO will be paid out upon termination where required by law (Document 1, source=pto_policy_2026.md). \n\nNote: Document 3 (2026) is used for accrual and usage, while Document 1 (2026) is used for approval guidelines and termination payout, as they are the most recent policies.",
+        "answer": "The PTO policy is as follows: \nEmployees receive paid time off for vacation and personal use, accruing 18 days of PTO per year, which begins on the employee start date and is accrued monthly (Document 3, source=pto_policy_2026.md). \nPTO may be used for vacation, personal matters, and short-term illness. New hires may begin using PTO after 90 days of employment. \nAdditionally, PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance, and may be denied during critical business periods (Document 1, source=pto_policy_2026.md). \nAccrued unused PTO will be paid out upon termination where required by law (Document 1, source=pto_policy_2026.md). \n\nNote: Document 3 (2026) is used as the primary source since it is the most recent policy version.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -172,7 +172,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, 3, and 4, year 2026), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1 and 2). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4). In exceptional cases, refunds outside the standard policy window may be approved at the discretion of a manager (Document 4).",
+        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, source=refund_policy_2026.md, and Document 4, source=refund_policy_2026.pdf), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1). Refunds outside this window may be approved at the discretion of a manager in exceptional cases (Document 4). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -193,7 +193,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "Manager approval is required for refunds when the amount is between $100 and $1000. (Document 4, page 2, refund_policy_2026.pdf)",
+        "answer": "Manager approval is required for refunds when the amount is between $100 and $1000. (Document 4, page 2)",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -285,7 +285,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "According to the retrieved context, specifically [Document 3] source=pto_policy_2026.md, employees accrue 18 days of PTO per year (Section ## Paid Time Off (PTO), subsection ### Accrual). This document is preferred as it is the newer policy version (year 2026).",
+        "answer": "According to the retrieved context, specifically [Document 3] source=pto_policy_2026.md, employees accrue 18 days of PTO per year (Section ## Paid Time Off (PTO), subsection ### Accrual). This document is the most recent policy version.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -308,7 +308,7 @@
         "expected_facts": [
           "30 days"
         ],
-        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md since it is the newer policy version.",
+        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md, as it is the newer policy version.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -331,7 +331,7 @@
         "expected_facts": [
           "3 times"
         ],
-        "answer": "According to Document 1, Document 2, and Document 4, the number of retry attempts allowed is 3 (citing Document 1: \"safe to retry up to 3 times\", Document 2: \"max_attempts = 3\", and Document 4: \"max_attempts = 3\").",
+        "answer": "According to Document 1, Document 2, and Document 4, the number of retry attempts allowed is 3 (cited in Document 1 as \"safe to retry up to 3 times\", in Document 2 as \"max_attempts = 3\", and in Document 4 as \"`max_attempts = 3`\").",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -352,7 +352,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "To retry failed requests, follow these guidelines: \nRetry up to 3 times with exponential backoff (1 minute, 5 minutes, 15 minutes) for system errors (500, 502, 503) and rate limiting errors (429) (Document 1, Document 2, Document 3). \nDo not retry for stolen_card, lost_card, or fraudulent errors (Document 3). \nFor refund failures due to transient issues, log the failure and notify the support team, then retry (Document 4). \n\nCited documents: failed_payment_playbook.md (Document 1, Document 2), payment_flow.md (Document 3), refund_policy_2026.pdf (Document 4).",
+        "answer": "To retry failed requests, follow these guidelines: \nRetry up to 3 times with exponential backoff (1 minute, 5 minutes, 15 minutes) for system errors (500, 502, 503) and rate limiting errors (429) (Document 1, Document 2, Document 3). \nDo not retry for stolen_card, lost_card, or fraudulent errors (Document 3). \nFor refund failures due to transient issues, retry and log the failure, notifying the support team (Document 4). \n\nCited documents: failed_payment_playbook.md (Document 1, Document 2), payment_flow.md (Document 3), refund_policy_2026.pdf (Document 4).",
         "source_hit": 1,
         "mrr": 0.3333333333333333,
         "top_1_correct": 0,
@@ -375,7 +375,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "The PTO policy is as follows: \nEmployees receive paid time off for vacation and personal use, accruing 18 days of PTO per year, which begins on the employee start date and is accrued monthly (Document 3). \nPTO may be used for vacation, personal matters, and short-term illness. New hires may begin using PTO after 90 days of employment. \nPTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance, and may be denied during critical business periods (Document 1). \nAccrued unused PTO will be paid out upon termination where required by law (Document 1). \n\nNote: Document 3 (2026) is used as the primary source since it is the most recent policy version.",
+        "answer": "The PTO policy is as follows: \nEmployees receive paid time off for vacation and personal use, accruing 18 days of PTO per year, which begins on the employee start date and is accrued monthly (Document 3, source=pto_policy_2026.md). \nPTO may be used for vacation, personal matters, and short-term illness. New hires may begin using PTO after 90 days of employment. \nAdditionally, PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance (Document 1, source=pto_policy_2026.md). \nAccrued unused PTO will be paid out upon termination where required by law (Document 1, source=pto_policy_2026.md). \n\nNote: Document 3 (2026) is used for accrual and usage, while Document 1 (2026) is used for approval guidelines and termination payout, as they are the most recent policies.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -396,7 +396,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, 3, and 4, year 2026), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days from the original transaction date (Document 1 and 2). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4). In exceptional cases, refunds outside the standard policy window may be approved at the discretion of a manager (Document 4).",
+        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, source=refund_policy_2026.md, and Document 4, source=refund_policy_2026.pdf), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1). Refunds outside this window may be approved at the discretion of a manager in exceptional cases (Document 4). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -509,7 +509,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "According to the retrieved context, specifically [Document 1] (pto_policy_2026.md), employees accrue 18 days of PTO per year (## Paid Time Off (PTO) > ### Accrual).",
+        "answer": "According to the retrieved context, specifically [Document 1] (pto_policy_2026.md), employees accrue 18 days of PTO per year.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -532,7 +532,7 @@
         "expected_facts": [
           "30 days"
         ],
-        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] and [Document 4], which are the most recent policy versions.",
+        "answer": "The refund window is 30 days of the original transaction date (Document 1: refund_policy_2026.md, Document 4: refund_policy_2026.pdf, page 1).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -544,7 +544,8 @@
         "category": "exact_term",
         "query": "How many retry attempts are allowed?",
         "expected_sources": [
-          "payment_flow.md"
+          "payment_flow.md",
+          "failed_payment_playbook.md"
         ],
         "retrieved_sources": [
           "failed_payment_playbook.md",
@@ -553,7 +554,8 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [
-          "3 times"
+          "3 times",
+          "max_attempts = 3"
         ],
         "answer": "According to Document 1 (failed_payment_playbook.md) and Document 2 (payment_flow.md), the maximum number of retry attempts allowed is 3 (max_attempts = 3). [Document 1, Document 2]",
         "source_hit": 1,
@@ -576,7 +578,7 @@
           "payment_failure_spike.md"
         ],
         "expected_facts": [],
-        "answer": "Retry failed requests only if the failure is considered transient (Document 1, page 3, and Document 2). Log the failure and notify the support team (Document 1, page 3). Ensure idempotency by including an idempotency key in refund requests to prevent duplicate refunds and ensure safe retries during network failures (Document 1 and Document 2).",
+        "answer": "Retry failed requests only if the failure is considered transient (Document 1, page 3, and Document 2). This is to prevent duplicate refunds and ensure safe retries during network failures (Document 2). The type of failure should be identified (Document 3) to determine if a retry is applicable. Additionally, the retry system and webhook validation should be checked (Document 4) to ensure proper handling of retries.",
         "source_hit": 0,
         "mrr": 0.0,
         "top_1_correct": 0,
@@ -599,7 +601,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "The PTO policy is as follows: \n- Employees accrue 18 days of PTO per year (Document 2, source=pto_policy_2026.md).\n- Accrual begins on the employee start date and is accrued monthly.\n- PTO may be used for vacation, personal matters, and short-term illness.\n- New hires may begin using PTO after 90 days of employment.\n- PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance (Document 4, source=pto_policy_2026.md). \n\nNote: The 2026 policy (Document 2 and Document 4) is used as it is the newer version.",
+        "answer": "The PTO policy is as follows: \n- Employees accrue 18 days of PTO per year (Document 2, source=pto_policy_2026.md).\n- Accrual begins on the employee start date and is accrued monthly (Document 2).\n- PTO may be used for vacation, personal matters, and short-term illness (Document 2).\n- New hires may begin using PTO after 90 days of employment (Document 2).\n- PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance (Document 4, source=pto_policy_2026.md).\n- Accrued unused PTO will be paid out upon termination where required by law (Document 4). \n\nThis information is based on the most recent policy versions available (Documents 2 and 4, both from 2026).",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -620,7 +622,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "The refund policy, as per the latest documents (Document 2, Document 3, and Document 4), states that a refund can be issued if certain conditions are met. However, the specific eligibility criteria are only fully outlined in Document 1 (refund_policy_2025.md), which states that a refund is eligible if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window of 14 days from the original transaction date.\n\nAccording to the newer policy versions (Document 4, page 4), refunds should not be issued if the transaction is under investigation, and exceptional cases outside the standard policy window may be approved at the discretion of a manager.\n\nPlease note that while Document 1 provides more detailed information on refund eligibility, it is an older policy version. The newer policy versions (Document 2, Document 3, and Document 4) do not provide the same level of detail on eligibility criteria but do offer additional guidance on risk considerations and exceptional cases. (Documents 1, 2, 3, and 4)",
+        "answer": "The refund policy, as per the latest documents (Document 2, Document 3, and Document 4), states that a refund can be issued if certain conditions are met. However, the specific eligibility criteria are only fully outlined in Document 1 (refund_policy_2025.md), which states that a refund is eligible if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window of 14 days from the original transaction date.\n\nAccording to the newer policy versions (Document 4, page 4), refunds should not be issued if the transaction is under investigation, and exceptional cases outside the standard policy window may be approved at the discretion of a manager. \n\nRefund guidelines are outlined in Documents 2 and 3, but the key details are in Document 1 and updated considerations in Document 4. (Documents 1, 2, 3, and 4).",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -662,7 +664,7 @@
           "refund_policy_2025.md"
         ],
         "expected_facts": [],
-        "answer": "The refund window in 2025 is not explicitly stated in the provided documents from 2025. However, Document 3 from 2026 states the refund window is 30 days, but this may not apply to 2025. Document 4 from 2025 does not specify the refund window. Therefore, the context is insufficient to determine the refund window in 2025.",
+        "answer": "The refund window in 2025 is not explicitly stated in the provided documents from 2025. Although Document 4 (refund_policy_2025.md) discusses various aspects of refund policies, it does not specify the refund window. Therefore, the context is insufficient to answer the question.",
         "source_hit": 1,
         "mrr": 0.25,
         "top_1_correct": 0,

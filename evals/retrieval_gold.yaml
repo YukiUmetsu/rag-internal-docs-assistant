@@ -16,12 +16,14 @@ queries:
       - "30 days"
 
   - id: retry_attempts_exact
-    category: exact_term
+    category: factual_lookup
     query: "How many retry attempts are allowed?"
     expected_sources:
       - "payment_flow.md"
+      - "failed_payment_playbook.md"
     expected_facts:
       - "3 times"
+      - "max_attempts = 3"
 
   - id: retry_failed_requests_exact
     category: exact_term

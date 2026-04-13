@@ -6,6 +6,7 @@ from typing import DefaultDict, List
 from langchain_core.documents import Document
 
 from src.rag.config import get_chunks_path
+from src.rag.debug_log import append_rerank_debug_log
 from src.rag.hybrid_retrieve import keyword_retrieve, merge_retrieval_results
 from src.rag.rerank import rerank_candidates
 from src.rag.vectorstore import load_vectorstore
@@ -42,6 +43,8 @@ def retrieve(
     chunks_path: str | None = None,
     use_hybrid: bool = False,
     use_rerank: bool = True,
+    debug_log_path: str | None = None,
+    debug_context: dict[str, str] | None = None,
 ) -> List[Document]:
     """
     Retrieve relevant documents using a two-stage retrieval pipeline.
@@ -89,11 +92,34 @@ def retrieve(
 
     # --- Stage 3: Reranking (optional) ---
     if use_rerank:
+        query_id = debug_context.get("query_id") if debug_context else None
+        mode_name = debug_context.get("mode_name") if debug_context else None
+
+        if debug_log_path:
+            append_rerank_debug_log(
+                path=debug_log_path,
+                query_id=query_id,
+                query=query,
+                mode_name=mode_name,
+                stage="before_rerank",
+                docs=candidates,
+            )
+
         candidates = rerank_candidates(
             query=query,
             docs=candidates,
             apply_freshness=False,
         )
+
+        if debug_log_path:
+            append_rerank_debug_log(
+                path=debug_log_path,
+                query_id=query_id,
+                query=query,
+                mode_name=mode_name,
+                stage="after_rerank",
+                docs=candidates,
+            )
 
     # --- Stage 4: Per-source filtering ---
     filtered_docs = pick_top_chunks_per_source(
