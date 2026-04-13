@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from collections import defaultdict
 from typing import DefaultDict, List
 from langchain_core.documents import Document
@@ -10,6 +11,20 @@ from src.rag.debug_log import append_rerank_debug_log
 from src.rag.hybrid_retrieve import keyword_retrieve, merge_retrieval_results
 from src.rag.rerank import rerank_candidates
 from src.rag.vectorstore import load_vectorstore
+
+
+def get_single_query_year(query: str) -> str | None:
+    years = set(re.findall(r"\b(20\d{2})\b", query))
+    if len(years) != 1:
+        return None
+    return next(iter(years))
+
+
+def filter_docs_by_year(docs: List[Document], year: str | None) -> List[Document]:
+    if year is None:
+        return docs
+    return [doc for doc in docs if str(doc.metadata.get("year")) == year]
+
 
 def get_group_id(doc: Document) -> str:
     return (
@@ -44,7 +59,7 @@ def retrieve(
     max_chunks_per_source: int = 2,
     vectorstore_path: str | None = None,
     chunks_path: str | None = None,
-    use_hybrid: bool = False,
+    use_hybrid: bool = True,
     use_rerank: bool = True,
     debug_log_path: str | None = None,
     debug_context: dict[str, str] | None = None,
@@ -76,18 +91,37 @@ def retrieve(
 
     # --- Load vectorstore ---
     vectorstore = load_vectorstore(vectorstore_path=vectorstore_path)
+    query_year = get_single_query_year(query)
 
     # --- Stage 1: Dense retrieval ---
-    dense_docs = vectorstore.similarity_search(query, k=initial_k)
+    if query_year is None:
+        dense_docs = vectorstore.similarity_search(query, k=initial_k)
+    else:
+        dense_docs = vectorstore.similarity_search(
+            query,
+            k=initial_k,
+            filter={"year": query_year},
+            fetch_k=max(initial_k * 5, 50),
+        )
+        if not dense_docs and not use_hybrid:
+            dense_docs = vectorstore.similarity_search(query, k=initial_k)
+
     candidates: List[Document] = list(dense_docs)
 
     # --- Stage 2: Hybrid retrieval (optional) ---
     if use_hybrid:
-        keyword_docs = keyword_retrieve(
+        keyword_fetch_k = initial_k * 4 if query_year is not None else initial_k
+        raw_keyword_docs = keyword_retrieve(
             query=query,
             chunks_path=chunks_path or get_chunks_path(),
-            k=initial_k,
+            k=keyword_fetch_k,
         )
+        keyword_docs = filter_docs_by_year(raw_keyword_docs, query_year)
+        if query_year is not None and not dense_docs and not keyword_docs:
+            dense_docs = vectorstore.similarity_search(query, k=initial_k)
+            keyword_docs = raw_keyword_docs
+        keyword_docs = keyword_docs[:initial_k]
+
         candidates = merge_retrieval_results(
             dense_docs=dense_docs,
             keyword_docs=keyword_docs,

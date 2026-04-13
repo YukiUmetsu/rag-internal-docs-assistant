@@ -222,6 +222,10 @@ Inspired by real-world internal knowledge assistants used in:
 
 (2) I observed that duplicate document formats (PDF vs Markdown) were dominating top retrieval results in some cases. I introduced canonical document grouping to collapse near-duplicates and improve result diversity, which improved version-sensitive retrieval performance.
 
+(3) I replaced the simple dense-first hybrid merge with Reciprocal Rank Fusion (RRF), so dense and keyword retrieval could both influence candidate order. This improved the hybrid retrieval baseline, but reranking still exposed a specific weakness: when the query named an exact year, semantically similar documents from the wrong year could still outrank the correct historical policy.
+
+(4) I added an explicit single-year metadata filter before reranking. When a query contains exactly one year, retrieval first constrains candidates to documents with matching `year` metadata, while multi-year comparison queries remain unfiltered. This resolved the version/year failure mode: on the current 11-query retrieval eval, `hybrid_rerank` improved to 1.000 MRR and 1.000 top-1 accuracy across latest-policy, exact-term, ambiguous, version-sensitive, and exact-year categories.
+
 --
 
 ## 🧠 Author Notes

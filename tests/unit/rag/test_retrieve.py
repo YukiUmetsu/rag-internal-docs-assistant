@@ -27,7 +27,12 @@ def test_retrieve_calls_similarity_search_with_query_and_k() -> None:
     )
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        retrieve_mod.retrieve("billing issue", initial_k=5)
+        retrieve_mod.retrieve(
+            "billing issue",
+            initial_k=5,
+            use_hybrid=False,
+            use_rerank=False,
+        )
 
     assert fake.calls == [{"query": "billing issue", "k": 5}]
 
@@ -45,7 +50,13 @@ def test_retrieve_limits_chunks_per_source() -> None:
     fake = FakeVectorStore(docs)
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        out = retrieve_mod.retrieve(q, initial_k=20, max_chunks_per_source=2)
+        out = retrieve_mod.retrieve(
+            q,
+            initial_k=20,
+            max_chunks_per_source=2,
+            use_hybrid=False,
+            use_rerank=False,
+        )
 
     assert len(out) == 4
     by_source = {}
@@ -60,7 +71,12 @@ def test_retrieve_handles_no_results() -> None:
     fake = FakeVectorStore([])
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        out = retrieve_mod.retrieve("anything", initial_k=8)
+        out = retrieve_mod.retrieve(
+            "anything",
+            initial_k=8,
+            use_hybrid=False,
+            use_rerank=False,
+        )
 
     assert out == []
     assert fake.calls == [{"query": "anything", "k": 8}]
@@ -78,8 +94,89 @@ def test_retrieve_preserves_metadata() -> None:
     fake = FakeVectorStore([doc])
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        out = retrieve_mod.retrieve("Escalate", initial_k=4)
+        out = retrieve_mod.retrieve(
+            "Escalate",
+            initial_k=4,
+            use_hybrid=False,
+            use_rerank=False,
+        )
 
     assert len(out) == 1
     assert out[0].metadata == meta
     assert out[0].page_content == doc.page_content
+
+
+def test_retrieve_filters_dense_results_for_single_year_query() -> None:
+    docs = [
+        Document(
+            page_content="Refund window was 14 days.",
+            metadata={"source_doc_id": "refund_2025", "file_name": "refund_policy_2025.md", "year": "2025"},
+        ),
+        Document(
+            page_content="Refund window is 30 days.",
+            metadata={"source_doc_id": "refund_2026", "file_name": "refund_policy_2026.md", "year": "2026"},
+        ),
+    ]
+    fake = FakeVectorStore(docs)
+
+    with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
+        out = retrieve_mod.retrieve(
+            "What was the refund window in 2025?",
+            initial_k=4,
+            use_hybrid=False,
+            use_rerank=False,
+        )
+
+    assert [doc.metadata["file_name"] for doc in out] == ["refund_policy_2025.md"]
+    assert fake.calls == [
+        {
+            "query": "What was the refund window in 2025?",
+            "k": 4,
+            "filter": {"year": "2025"},
+            "fetch_k": 50,
+        }
+    ]
+
+
+def test_retrieve_does_not_filter_dense_results_for_multi_year_query() -> None:
+    fake = FakeVectorStore(
+        [
+            Document(page_content="2025 policy", metadata={"source_doc_id": "a", "year": "2025"}),
+            Document(page_content="2026 policy", metadata={"source_doc_id": "b", "year": "2026"}),
+        ]
+    )
+
+    with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
+        retrieve_mod.retrieve(
+            "Compare the 2025 and 2026 policies.",
+            initial_k=4,
+            use_hybrid=False,
+            use_rerank=False,
+        )
+
+    assert fake.calls == [{"query": "Compare the 2025 and 2026 policies.", "k": 4}]
+
+
+def test_retrieve_does_not_reintroduce_wrong_year_keyword_docs() -> None:
+    dense_doc = Document(
+        page_content="Refund window was 14 days.",
+        metadata={"source_doc_id": "refund_2025", "file_name": "refund_policy_2025.md", "year": "2025"},
+    )
+    wrong_year_keyword_doc = Document(
+        page_content="Refund window is 30 days.",
+        metadata={"source_doc_id": "refund_2026", "file_name": "refund_policy_2026.md", "year": "2026"},
+    )
+    fake = FakeVectorStore([dense_doc, wrong_year_keyword_doc])
+
+    with (
+        patch.object(retrieve_mod, "load_vectorstore", return_value=fake),
+        patch.object(retrieve_mod, "keyword_retrieve", return_value=[wrong_year_keyword_doc]),
+    ):
+        out = retrieve_mod.retrieve(
+            "What was the refund window in 2025?",
+            initial_k=4,
+            use_hybrid=True,
+            use_rerank=False,
+        )
+
+    assert [doc.metadata["file_name"] for doc in out] == ["refund_policy_2025.md"]
