@@ -92,7 +92,7 @@
         "expected_facts": [
           "30 days"
         ],
-        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md as it is the newer policy version.",
+        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md since it is the newer policy version.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -138,7 +138,7 @@
           "payment_failure_spike.md"
         ],
         "expected_facts": [],
-        "answer": "Known issues are not explicitly listed in the provided context. However, potential issues can be inferred from the mitigation strategies and escalation paths described in [Document 1] (payment_failure_spike.md) and [Document 2] (failed_payment_playbook.md), as well as the known edge cases in [Document 3] (refund_policy_2026.md). \n\nExamples of issues include:\n- External issues: payment provider failures (Document 1)\n- Internal issues: service scaling, component failures, deployment issues (Document 1)\n- Rate limiting: excessive requests (Document 1)\n- Customer action required: insufficient funds, expired card (Document 2)\n- System retry: transient network errors, processor timeouts (Document 2)\n- Escalation required: unknown error codes, exhausted retry attempts, repeated failures (Document 2)\n- Duplicate refund requests, partial refund conflicts, delayed refund visibility (Document 3)\n\nFor more information, refer to the respective documents: [Document 1], [Document 2], and [Document 3].",
+        "answer": "The retrieved context does not provide a direct answer to the question \"Known Issues\". However, it appears that known issues are related to payment failures, and some known edge cases are described in [Document 3] source=refund_policy_2026.md. \n\nSome known issues and edge cases include:\n- payment failures due to insufficient funds or expired cards [Document 2] source=failed_payment_playbook.md\n- duplicate refund requests [Document 3] source=refund_policy_2026.md\n- partial refund conflicts [Document 3] source=refund_policy_2026.md\n- delayed refund visibility [Document 3] source=refund_policy_2026.md\n\nFor more information, please refer to [Document 1] source=payment_failure_spike.md, [Document 2] source=failed_payment_playbook.md, and [Document 3] source=refund_policy_2026.md.",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -161,7 +161,7 @@
         "expected_facts": [
           "partial degradation"
         ],
-        "answer": "SEV2 is mentioned in [Document 1] under the Escalation section, which states that escalation is required when a SEV1 or SEV2 is detected. However, the definition and response for SEV2 are not provided in the retrieved context. The context only provides information on SEV3 and SEV4 in [Document 2]. Therefore, the context is insufficient to provide a detailed answer for SEV2. (Insufficient context, [Document 1], [Document 2])",
+        "answer": "SEV2 is mentioned in [Document 1] under the Escalation section. According to this document, when a SEV1 or SEV2 is detected, escalation is required. However, the definition and response for SEV2 are not provided in the retrieved context. The context only provides definitions for SEV3 and SEV4 in [Document 2]. Therefore, the information is insufficient to provide a detailed answer about SEV2.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -182,7 +182,7 @@
           "failed_payment_playbook.md"
         ],
         "expected_facts": [],
-        "answer": "The On-Call responsibilities are outlined in [Document 1]. The Primary On-Call (Engineering) is responsible for initial triage, incident classification, mitigation actions, and communication updates. The Secondary On-Call assists the primary, investigates deeper issues, and handles overflow tasks. \n\nFor high-severity incidents (SEV1 / SEV2), an Incident Commander is assigned to coordinate the response, manage communication, track progress, and ensure clear ownership. \n\nPlease refer to [Document 1] for more information on On-Call responsibilities.",
+        "answer": "The On-Call responsibilities are outlined in [Document 1]. The Primary On-Call (Engineering) is responsible for initial triage, incident classification, mitigation actions, and communication updates. The Secondary On-Call assists the primary, investigates deeper issues, and handles overflow tasks. For high-severity incidents (SEV1/SEV2), an Incident Commander is assigned to coordinate the response, manage communication, track progress, and ensure clear ownership.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -226,7 +226,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, source=refund_policy_2026.md, and Document 4, source=refund_policy_2026.pdf), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1). Refunds outside this window may be approved at the discretion of a manager in exceptional cases (Document 4). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4).",
+        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, 3, and 4, year 2026), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1 and 2). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4). In exceptional cases, refunds outside the standard policy window may be approved at the discretion of a manager (Document 4).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -347,7 +347,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "According to Document 3 (pto_policy_2026.md), employees accrue 18 days of PTO per year. (Document 3, section \"Accrual\")",
+        "answer": "According to the retrieved context, specifically [Document 3] source=pto_policy_2026.md, employees accrue 18 days of PTO per year (Section ## Paid Time Off (PTO), subsection ### Accrual). This document is the most recent policy version.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -370,7 +370,7 @@
         "expected_facts": [
           "30 days"
         ],
-        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md since it is the newer policy version.",
+        "answer": "The refund window is 30 days from the original transaction date, as stated in [Document 1] source=refund_policy_2026.md. This document is preferred over [Document 2] source=refund_policy_2025.md as it is the newer policy version.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -439,7 +439,7 @@
         "expected_facts": [
           "partial degradation"
         ],
-        "answer": "SEV2 is mentioned in [Document 1] under the Escalation section. According to this document, when a SEV1 or SEV2 is detected, the issue should be escalated. However, the definition and response for SEV2 are not provided in the retrieved context. The context only provides definitions for SEV3 and SEV4 in [Document 2]. Therefore, the information is insufficient to provide a detailed answer about SEV2.",
+        "answer": "SEV2 is mentioned in [Document 1] under the Escalation section. According to this document, when a SEV1 or SEV2 is detected, the issue should be escalated. However, the definition and response for SEV2 are not provided in the retrieved context. The context only provides information on SEV3 and SEV4 in [Document 2]. Therefore, the context is insufficient to provide a detailed answer on SEV2.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -460,7 +460,7 @@
           "failed_payment_playbook.md"
         ],
         "expected_facts": [],
-        "answer": "The On-Call responsibilities are outlined in [Document 1]. The Primary On-Call (Engineering) is responsible for initial triage, incident classification, mitigation actions, and communication updates. The Secondary On-Call assists the primary, investigates deeper issues, and handles overflow tasks. \n\nFor high-severity incidents (SEV1 / SEV2), an Incident Commander is assigned to coordinate the response, manage communication, track progress, and ensure clear ownership. \n\nPlease refer to [Document 1] for more information on On-Call responsibilities.",
+        "answer": "The On-Call responsibilities are outlined in [Document 1]. The Primary On-Call (Engineering) is responsible for initial triage, incident classification, mitigation actions, and communication updates. The Secondary On-Call assists the primary, investigates deeper issues, and handles overflow tasks. For high-severity incidents (SEV1/SEV2), an Incident Commander is assigned to coordinate the response, manage communication, track progress, and ensure clear ownership.",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -504,7 +504,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, 3, and 4, year 2026), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days of the original transaction date (Document 1 and 2). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4). In exceptional cases, refunds outside the standard policy window may be approved at the discretion of a manager (Document 4).",
+        "answer": "The refund policy is outlined in Documents 1, 2, 3, and 4. According to the newest policy version (Document 1, 2026), a refund can be issued if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window, which is 14 days from the original transaction date (Document 2). Refunds outside this window may be approved at the discretion of a manager in exceptional cases (Document 4, page 4). Refund requests should be reviewed for unusual patterns, and refunds should not be issued if the transaction is under investigation (Document 4, page 4).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -559,8 +559,8 @@
     "summary": {
       "num_queries": 10,
       "source_hit_rate": 1.0,
-      "mrr": 0.775,
-      "top_1_accuracy": 0.6,
+      "mrr": 0.825,
+      "top_1_accuracy": 0.7,
       "fact_hit_rate": 1.0,
       "all_facts_hit_rate": 0.9,
       "use_hybrid": true,
@@ -594,8 +594,8 @@
       "ambiguous": {
         "count": 2,
         "source_hit_rate": 1.0,
-        "mrr": 0.5,
-        "top_1_accuracy": 0.0,
+        "mrr": 0.75,
+        "top_1_accuracy": 0.5,
         "fact_hit_rate": 1.0,
         "all_facts_hit_rate": 1.0
       },
@@ -625,7 +625,7 @@
         "expected_facts": [
           "18 days"
         ],
-        "answer": "According to the retrieved context, specifically [Document 1] (pto_policy_2026.md), employees accrue 18 days of PTO per year. (Document 1, section \"### Accrual\")",
+        "answer": "According to the retrieved context, specifically [Document 1] (pto_policy_2026.md), employees accrue 18 days of PTO per year (## Paid Time Off (PTO) > ### Accrual).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -694,7 +694,7 @@
           "refund_policy_2025.md"
         ],
         "expected_facts": [],
-        "answer": "Known issues include:\n\n1. Duplicate Failures (Document 1) - caused by repeated retries without a state update.\n2. Webhook Delays (Document 1) - caused by queue backlog, resulting in delayed order confirmation.\n3. Duplicate Refund Requests (Document 2) - caused by repeated submissions due to network retries or UI issues.\n4. Partial Refund Conflicts (Document 2) - caused by multiple partial refunds exceeding the total amount.\n5. Delayed Refund Visibility (Document 2) - caused by bank processing delays.\n6. Duplicate Refund Attempts (Document 4) - caused by repeated requests due to retries or UI issues.\n\nNote: Document 2 (refund_policy_2026.md) is preferred over Document 4 (refund_policy_2025.md) as it is the newer policy version.",
+        "answer": "Known issues include:\n\n1. Duplicate Failures (Document 1) - caused by repeated retries without a state update.\n2. Webhook Delays (Document 1) - caused by queue backlog, resulting in delayed order confirmation.\n3. Duplicate Refund Requests (Document 2) - caused by repeated submissions due to network retries or UI issues.\n4. Partial Refund Conflicts (Document 2) - caused by multiple partial refunds exceeding the total amount.\n5. Delayed Refund Visibility (Document 2) - caused by bank processing delays.\n\nNote: Document 4 (refund_policy_2025.md) is an older policy version and has been superseded by Document 2 (refund_policy_2026.md).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -717,7 +717,7 @@
         "expected_facts": [
           "partial degradation"
         ],
-        "answer": "SEV2 is defined as a High severity incident, characterized by a partial degradation of the payment system, a failure rate between 5 and 20 percent, and significant user impact. The response to a SEV2 incident requires a response within 15 minutes and the assignment of an on-call engineer (Document 1).",
+        "answer": "SEV2 is defined as a high severity incident with a partial degradation of the payment system, a failure rate between 5 and 20 percent, and significant user impact. The response requires assignment of an on-call engineer and a response within 15 minutes (Document 1).",
         "source_hit": 1,
         "mrr": 1.0,
         "top_1_correct": 1,
@@ -753,18 +753,18 @@
           "pto_policy_2026.md"
         ],
         "retrieved_sources": [
-          "pto_policy_2025.md",
           "pto_policy_2026.md",
+          "pto_policy_2025.md",
           "pto_policy_2025.md",
           "pto_policy_2026.md"
         ],
         "expected_facts": [
           "18 days"
         ],
-        "answer": "The PTO policy is as follows: \nEmployees accrue 18 days of PTO per year, accrual begins on the employee start date, and PTO is accrued monthly (Document 2). \nPTO may be used for vacation, personal matters, and short-term illness. \nNew hires may begin using PTO after 90 days of employment (Document 2). \nPTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance (Document 4). \nAccrued unused PTO will be paid out upon termination where required by law (Document 4). \n\nNote: The 2026 policy (Document 2 and Document 4) is used as it is the newer version.",
+        "answer": "The PTO policy is as follows: \n- Employees accrue 18 days of PTO per year (Document 1).\n- Accrual begins on the employee start date and is accrued monthly (Document 1).\n- PTO may be used for vacation, personal matters, and short-term illness (Document 1).\n- New hires may begin using PTO after 90 days of employment (Document 1).\n- PTO requests should be submitted through the HR system, with requests for 3 or more consecutive days submitted at least 2 weeks in advance (Document 4).\n- Accrued unused PTO will be paid out upon termination where required by law (Document 4).",
         "source_hit": 1,
-        "mrr": 0.5,
-        "top_1_correct": 0,
+        "mrr": 1.0,
+        "top_1_correct": 1,
         "fact_hit": 1,
         "all_facts_hit": 1
       },
@@ -782,7 +782,7 @@
           "refund_policy_2026.pdf"
         ],
         "expected_facts": [],
-        "answer": "The refund policy, as per the latest documents (Document 2, Document 3, and Document 4), states that a refund can be issued if certain conditions are met. According to Document 1 (2025 policy), these conditions include a valid transaction, successful payment capture, and a request within the allowed refund window, which is 14 days from the original transaction date (Document 1). However, Document 4 (2026 policy) suggests that refunds outside this window may be approved in exceptional cases at a manager's discretion. Refund requests should also be reviewed for unusual patterns, such as high refund frequency or large transaction amounts (Document 4). \n\nReferences: \n- Document 1: refund_policy_2025.md\n- Document 2: refund_policy_2026.md\n- Document 3: refund_policy_2026.pdf\n- Document 4: refund_policy_2026.pdf",
+        "answer": "The refund policy, as per the latest documents (Document 2, Document 3, and Document 4), states that a refund can be issued if certain conditions are met. However, the specific eligibility criteria are only fully outlined in Document 1 (refund_policy_2025.md), which states that a refund is eligible if the transaction exists, the payment was successfully captured, and the request falls within the allowed refund window of 14 days from the original transaction date.\n\nAccording to the newer policy versions (Document 4, page 4), refunds should not be issued if the transaction is under investigation, and exceptional cases outside the standard policy window may be approved at the discretion of a manager.\n\nPlease note that while the newer documents (Document 2, Document 3, and Document 4) provide some information on the refund policy, they do not fully outline the eligibility criteria. Therefore, the context is somewhat insufficient for a complete answer. (Documents 1, 2, 3, and 4)",
         "source_hit": 1,
         "mrr": 0.5,
         "top_1_correct": 0,
@@ -824,7 +824,7 @@
           "refund_policy_2025.md"
         ],
         "expected_facts": [],
-        "answer": "The refund window in 2025 is not explicitly stated in the provided documents from 2025. However, the refund window is mentioned in the 2026 documents, but since the question specifically asks for 2025, we cannot accurately determine the refund window for 2025 based on the given context. (Insufficient information from Document 4, source=refund_policy_2025.md)",
+        "answer": "The refund window in 2025 is not explicitly stated in the provided documents from 2025. Although Document 4 (refund_policy_2025.md) discusses various aspects of refund policy, it does not specify the refund window. Therefore, the context is insufficient to answer the question.",
         "source_hit": 1,
         "mrr": 0.25,
         "top_1_correct": 0,

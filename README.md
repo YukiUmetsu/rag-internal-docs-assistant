@@ -214,7 +214,7 @@ Inspired by real-world internal knowledge assistants used in:
 
 ## Evaluation Story
 
-(1) I added hybrid retrieval and reranking, then built an eval harness to compare modes. The eval showed that dense retrieval was already strong, hybrid was neutral on my initial dataset, and the cross-encoder reranker regressed exact-term and version-sensitive queries. I used that result to isolate the reranker as the main issue and planned the next iteration around fusion and harder lexical evals.
+(1) Dense retrieval was already strong, and hybrid retrieval was neutral on the initial dataset. Reranking improved exact-term and some ambiguous cases, but it still regressed version-sensitive ranking. The remaining issue appears to be that semantic reranking still over-prefers newer or semantically similar documents when the query requires an exact historical version.
 
 --
 

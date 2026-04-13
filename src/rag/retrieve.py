@@ -53,7 +53,7 @@ def retrieve(
         1. Dense retrieval (FAISS) → initial_k candidates
         2. Optional keyword retrieval (BM25) → initial_k candidates
         3. Merge candidates (deduplicate)
-        4. Optional reranking (cross-encoder + freshness boost)
+        4. Optional reranking (cross-encoder + metadata score adjustment)
         5. Limit chunks per source
         6. Return top final_k documents
 
@@ -108,7 +108,7 @@ def retrieve(
         candidates = rerank_candidates(
             query=query,
             docs=candidates,
-            apply_freshness=False,
+            use_metadata_score_adjustment=True,
         )
 
         if debug_log_path:

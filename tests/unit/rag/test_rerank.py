@@ -1,10 +1,13 @@
 from langchain_core.documents import Document
+
 from src.rag.rerank import (
     RerankedDocument,
-    apply_freshness_bonus,
+    apply_metadata_score_adjustment,
+    extract_query_year,
     get_valid_year_range,
     parse_valid_year,
 )
+
 
 def make_reranked_doc(
     content: str,
@@ -28,11 +31,17 @@ def make_reranked_doc(
         score=score,
     )
 
+
 def test_parse_valid_year():
     assert parse_valid_year("2026") == 2026
     assert parse_valid_year(2025) == 2025
     assert parse_valid_year("abc") is None
     assert parse_valid_year(None) is None
+
+
+def test_extract_query_year():
+    assert extract_query_year("What was the refund window in 2025?") == 2025
+    assert extract_query_year("What is the latest refund policy?") is None
 
 
 def test_get_valid_year_range_ignores_invalid_years():
@@ -41,11 +50,38 @@ def test_get_valid_year_range_ignores_invalid_years():
         make_reranked_doc("b", 0.7, year="bad"),
         make_reranked_doc("c", 0.6, year="2026"),
     ]
-
     assert get_valid_year_range(items) == (2024, 2026)
 
 
-def test_apply_freshness_bonus_prefers_newer_doc_within_same_group():
+def test_apply_metadata_score_adjustment_prefers_exact_year_match_within_same_group():
+    items = [
+        make_reranked_doc(
+            "older refund policy",
+            0.90,
+            domain="policies",
+            topic="refund_policy",
+            year="2025",
+            file_name="refund_policy_2025.md",
+        ),
+        make_reranked_doc(
+            "newer refund policy",
+            0.90,
+            domain="policies",
+            topic="refund_policy",
+            year="2026",
+            file_name="refund_policy_2026.md",
+        ),
+    ]
+
+    ranked = apply_metadata_score_adjustment(
+        "What was the refund window in 2025?",
+        items,
+    )
+
+    assert ranked[0].doc.metadata["file_name"] == "refund_policy_2025.md"
+
+
+def test_apply_metadata_score_adjustment_prefers_newer_doc_for_latest_query_within_same_group():
     items = [
         make_reranked_doc(
             "older refund policy",
@@ -65,12 +101,15 @@ def test_apply_freshness_bonus_prefers_newer_doc_within_same_group():
         ),
     ]
 
-    ranked = apply_freshness_bonus(items, max_bonus=0.02)
+    ranked = apply_metadata_score_adjustment(
+        "What is the latest refund policy?",
+        items,
+    )
 
     assert ranked[0].doc.metadata["file_name"] == "refund_policy_2026.md"
 
 
-def test_apply_freshness_bonus_does_not_mix_topics():
+def test_apply_metadata_score_adjustment_does_not_mix_topics():
     items = [
         make_reranked_doc(
             "refund doc",
@@ -90,12 +129,15 @@ def test_apply_freshness_bonus_does_not_mix_topics():
         ),
     ]
 
-    ranked = apply_freshness_bonus(items, max_bonus=0.02)
+    ranked = apply_metadata_score_adjustment(
+        "What was the refund window in 2025?",
+        items,
+    )
 
     assert ranked[0].doc.metadata["file_name"] == "refund_policy_2025.md"
 
 
-def test_apply_freshness_bonus_skips_single_item_group():
+def test_apply_metadata_score_adjustment_skips_single_item_group():
     items = [
         make_reranked_doc(
             "single doc",
@@ -107,35 +149,38 @@ def test_apply_freshness_bonus_skips_single_item_group():
         )
     ]
 
-    ranked = apply_freshness_bonus(items, max_bonus=0.02)
+    ranked = apply_metadata_score_adjustment(
+        "What is the latest PTO policy?",
+        items,
+    )
 
     assert ranked[0].score == 0.80
     assert ranked[0].doc.metadata["file_name"] == "pto_policy_2026.md"
 
 
-def test_apply_freshness_bonus_skips_same_year_group():
+def test_apply_metadata_score_adjustment_prefers_latest_doc_when_query_has_no_year():
     items = [
         make_reranked_doc(
-            "doc 1",
-            0.91,
+            "older PTO policy",
+            0.90,
             domain="hr",
             topic="pto_policy",
-            year="2026",
-            file_name="pto_policy_a.md",
+            year="2025",
+            file_name="pto_policy_2025.md",
         ),
         make_reranked_doc(
-            "doc 2",
+            "newer PTO policy",
             0.89,
             domain="hr",
             topic="pto_policy",
             year="2026",
-            file_name="pto_policy_b.md",
+            file_name="pto_policy_2026.md",
         ),
     ]
 
-    ranked = apply_freshness_bonus(items, max_bonus=0.02)
+    ranked = apply_metadata_score_adjustment(
+        "What is the PTO policy?",
+        items,
+    )
 
-    assert [item.doc.metadata["file_name"] for item in ranked] == [
-        "pto_policy_a.md",
-        "pto_policy_b.md",
-    ]
+    assert ranked[0].doc.metadata["file_name"] == "pto_policy_2026.md"

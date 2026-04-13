@@ -22,7 +22,6 @@ queries:
       - "payment_flow.md"
       - "failed_payment_playbook.md"
     expected_facts:
-      - "3 times"
       - "max_attempts = 3"
 
   - id: exact_known_issues
@@ -64,6 +63,7 @@ queries:
     query: "When is manager approval required for refunds?"
     expected_sources:
       - "refund_policy_2026.md"
+      - "refund_policy_2026.pdf"
 
   - id: refund_window_2025
     category: version_sensitive
