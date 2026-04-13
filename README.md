@@ -123,18 +123,22 @@ Using structured evaluation datasets.
 ## 🧪 Example Queries
 
 ### Policy Questions
+
 - "What is the refund window?"
 - "Do refunds over $1000 require approval?"
 
 ### Engineering Questions
+
 - "How does the payment flow work?"
 - "What are common payment errors?"
 
 ### Incident Questions
+
 - "How do we debug a spike in payment failures?"
 - "What is a SEV1 incident?"
 
 ### HR Questions
+
 - "How many PTO days do employees get?"
 - "Is jury duty paid?"
 
@@ -215,6 +219,8 @@ Inspired by real-world internal knowledge assistants used in:
 ## Evaluation Story
 
 (1) Dense retrieval was already strong, and hybrid retrieval was neutral on the initial dataset. Reranking improved exact-term and some ambiguous cases, but it still regressed version-sensitive ranking. The remaining issue appears to be that semantic reranking still over-prefers newer or semantically similar documents when the query requires an exact historical version.
+
+(2) I observed that duplicate document formats (PDF vs Markdown) were dominating top retrieval results in some cases. I introduced canonical document grouping to collapse near-duplicates and improve result diversity, which improved version-sensitive retrieval performance.
 
 --
 

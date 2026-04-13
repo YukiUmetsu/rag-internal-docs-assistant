@@ -34,6 +34,7 @@ def infer_metadata(path: Path):
         "source": str(path),
         "file_name": path.name,
         "source_doc_id": make_source_doc_id(path),
+        "canonical_doc_id": path.stem,
         "domain": path.parent.name,
         "file_type": path.suffix.replace(".", ""),
         "topic": topic,

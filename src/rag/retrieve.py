@@ -11,9 +11,12 @@ from src.rag.hybrid_retrieve import keyword_retrieve, merge_retrieval_results
 from src.rag.rerank import rerank_candidates
 from src.rag.vectorstore import load_vectorstore
 
-def get_source_doc_id(doc: Document) -> str:
-    return str(doc.metadata.get("source_doc_id", "unknown"))
-
+def get_group_id(doc: Document) -> str:
+    return (
+        doc.metadata.get("canonical_doc_id")
+        or doc.metadata.get("source_doc_id")
+        or "unknown"
+    )
 
 def pick_top_chunks_per_source(
     docs: List[Document],
@@ -23,13 +26,13 @@ def pick_top_chunks_per_source(
     selected: List[Document] = []
 
     for doc in docs:
-        source_doc_id = get_source_doc_id(doc)
+        group_id = get_group_id(doc)
 
-        if grouped_counts[source_doc_id] >= max_chunks_per_source:
+        if grouped_counts[group_id] >= max_chunks_per_source:
             continue
 
         selected.append(doc)
-        grouped_counts[source_doc_id] += 1
+        grouped_counts[group_id] += 1
 
     return selected
 
