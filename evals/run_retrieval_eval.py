@@ -11,7 +11,6 @@ import unicodedata
 import yaml
 
 from src.rag.retrieve import retrieve
-from src.rag.answer import generate_answer_from_docs
 
 
 def load_gold_queries(path: str | Path) -> list[dict[str, Any]]:
@@ -59,6 +58,12 @@ def all_facts_hit(answer: str, expected_facts: list[str]) -> int:
     return int(all(fact.lower() in answer_lower for fact in expected_facts))
 
 
+def format_optional_rate(value: float | None) -> str:
+    if value is None:
+        return "skipped"
+    return f"{value:.3f}"
+
+
 def evaluate_mode(
     gold_queries: list[dict[str, Any]],
     *,
@@ -71,14 +76,15 @@ def evaluate_mode(
     initial_k: int = 8,
     max_chunks_per_source: int = 2,
     debug_log_path: str | None = None,
+    skip_answer_generation: bool = False,
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
 
     total_source_hit = 0
     total_mrr = 0.0
     total_top1 = 0
-    total_fact_hit = 0
-    total_all_facts_hit = 0
+    total_fact_hit = 0.0
+    total_all_facts_hit = 0.0
 
     category_totals: dict[str, dict[str, float]] = defaultdict(
         lambda: {
@@ -120,27 +126,38 @@ def evaluate_mode(
             for doc in docs
         ]
 
-        answer_text = generate_answer_from_docs(question=query, docs=docs)
-
         source_hit = hit_at_k(retrieved_sources, expected_sources)
         rr = reciprocal_rank(retrieved_sources, expected_sources)
         top1 = top_1_correct(retrieved_sources, expected_sources)
-        normalized_answer = normalize_eval_text(answer_text)
-        fact_hit_value = fact_hit(normalized_answer, expected_facts)
-        all_facts_hit_value = all_facts_hit(normalized_answer, expected_facts)
+
+        if skip_answer_generation:
+            answer_text = None
+            fact_hit_value = None
+            all_facts_hit_value = None
+        else:
+            from src.rag.answer import generate_answer_from_docs
+
+            answer_text = generate_answer_from_docs(question=query, docs=docs)
+            normalized_answer = normalize_eval_text(answer_text)
+            fact_hit_value = fact_hit(normalized_answer, expected_facts)
+            all_facts_hit_value = all_facts_hit(normalized_answer, expected_facts)
 
         total_source_hit += source_hit
         total_mrr += rr
         total_top1 += top1
-        total_fact_hit += fact_hit_value
-        total_all_facts_hit += all_facts_hit_value
+        if fact_hit_value is not None:
+            total_fact_hit += fact_hit_value
+        if all_facts_hit_value is not None:
+            total_all_facts_hit += all_facts_hit_value
 
         category_totals[category]["count"] += 1
         category_totals[category]["source_hit"] += source_hit
         category_totals[category]["mrr"] += rr
         category_totals[category]["top_1_correct"] += top1
-        category_totals[category]["fact_hit"] += fact_hit_value
-        category_totals[category]["all_facts_hit"] += all_facts_hit_value
+        if fact_hit_value is not None:
+            category_totals[category]["fact_hit"] += fact_hit_value
+        if all_facts_hit_value is not None:
+            category_totals[category]["all_facts_hit"] += all_facts_hit_value
 
         rows.append(
             {
@@ -161,7 +178,7 @@ def evaluate_mode(
 
         # --- rate limiting ---
         elapsed = time.time() - start_time
-        wait_time = max(0, 20 - elapsed)
+        wait_time = 0 if skip_answer_generation else max(0, 20 - elapsed)
 
         if wait_time > 0:
             print(f"Sleeping {wait_time:.2f}s to respect rate limit...")
@@ -174,10 +191,11 @@ def evaluate_mode(
         "source_hit_rate": total_source_hit / n if n else 0.0,
         "mrr": total_mrr / n if n else 0.0,
         "top_1_accuracy": total_top1 / n if n else 0.0,
-        "fact_hit_rate": total_fact_hit / n if n else 0.0,
-        "all_facts_hit_rate": total_all_facts_hit / n if n else 0.0,
+        "fact_hit_rate": None if skip_answer_generation else total_fact_hit / n if n else 0.0,
+        "all_facts_hit_rate": None if skip_answer_generation else total_all_facts_hit / n if n else 0.0,
         "use_hybrid": use_hybrid,
         "use_rerank": use_rerank,
+        "skip_answer_generation": skip_answer_generation,
     }
 
     category_summary: dict[str, dict[str, float]] = {}
@@ -188,8 +206,8 @@ def evaluate_mode(
             "source_hit_rate": totals["source_hit"] / count if count else 0.0,
             "mrr": totals["mrr"] / count if count else 0.0,
             "top_1_accuracy": totals["top_1_correct"] / count if count else 0.0,
-            "fact_hit_rate": totals["fact_hit"] / count if count else 0.0,
-            "all_facts_hit_rate": totals["all_facts_hit"] / count if count else 0.0,
+            "fact_hit_rate": None if skip_answer_generation else totals["fact_hit"] / count if count else 0.0,
+            "all_facts_hit_rate": None if skip_answer_generation else totals["all_facts_hit"] / count if count else 0.0,
         }
 
     return {
@@ -208,8 +226,8 @@ def print_mode_summary(mode_name: str, mode_result: dict[str, Any]) -> None:
     print(f"source_hit_rate      : {summary['source_hit_rate']:.3f}")
     print(f"mrr                  : {summary['mrr']:.3f}")
     print(f"top_1_accuracy       : {summary['top_1_accuracy']:.3f}")
-    print(f"fact_hit_rate        : {summary['fact_hit_rate']:.3f}")
-    print(f"all_facts_hit_rate   : {summary['all_facts_hit_rate']:.3f}")
+    print(f"fact_hit_rate        : {format_optional_rate(summary['fact_hit_rate'])}")
+    print(f"all_facts_hit_rate   : {format_optional_rate(summary['all_facts_hit_rate'])}")
 
     if category_summary:
         print("by_category:")
@@ -219,8 +237,8 @@ def print_mode_summary(mode_name: str, mode_result: dict[str, Any]) -> None:
                 f"count={cat['count']}, "
                 f"source_hit_rate={cat['source_hit_rate']:.3f}, "
                 f"top_1_accuracy={cat['top_1_accuracy']:.3f}, "
-                f"fact_hit_rate={cat['fact_hit_rate']:.3f}, "
-                f"all_facts_hit_rate={cat['all_facts_hit_rate']:.3f}"
+                f"fact_hit_rate={format_optional_rate(cat['fact_hit_rate'])}, "
+                f"all_facts_hit_rate={format_optional_rate(cat['all_facts_hit_rate'])}"
             )
 
 
@@ -234,6 +252,11 @@ def main() -> None:
     parser.add_argument("--initial-k", type=int, default=8)
     parser.add_argument("--max-chunks-per-source", type=int, default=2)
     parser.add_argument("--debug-log-path", default="artifacts/evals/rerank_debug.jsonl")
+    parser.add_argument(
+        "--skip-answer-generation",
+        action="store_true",
+        help="Evaluate retrieval metrics without calling the answer-generation LLM.",
+    )
     args = parser.parse_args()
 
     gold_queries = load_gold_queries(args.gold_path)
@@ -250,6 +273,7 @@ def main() -> None:
             initial_k=args.initial_k,
             max_chunks_per_source=args.max_chunks_per_source,
             debug_log_path=args.debug_log_path,
+            skip_answer_generation=args.skip_answer_generation,
         ),
         "hybrid_only": evaluate_mode(
             gold_queries,
@@ -262,6 +286,7 @@ def main() -> None:
             initial_k=args.initial_k,
             max_chunks_per_source=args.max_chunks_per_source,
             debug_log_path=args.debug_log_path,
+            skip_answer_generation=args.skip_answer_generation,
         ),
         "hybrid_rerank": evaluate_mode(
             gold_queries,
@@ -274,6 +299,7 @@ def main() -> None:
             initial_k=args.initial_k,
             max_chunks_per_source=args.max_chunks_per_source,
             debug_log_path=args.debug_log_path,
+            skip_answer_generation=args.skip_answer_generation,
         ),
     }
 

@@ -27,7 +27,7 @@ def test_retrieve_calls_similarity_search_with_query_and_k() -> None:
     )
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        retrieve_mod.retrieve("billing issue", k=5)
+        retrieve_mod.retrieve("billing issue", initial_k=5)
 
     assert fake.calls == [{"query": "billing issue", "k": 5}]
 
@@ -45,7 +45,7 @@ def test_retrieve_limits_chunks_per_source() -> None:
     fake = FakeVectorStore(docs)
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        out = retrieve_mod.retrieve(q, k=20, max_chunks_per_source=2)
+        out = retrieve_mod.retrieve(q, initial_k=20, max_chunks_per_source=2)
 
     assert len(out) == 4
     by_source = {}
@@ -60,7 +60,7 @@ def test_retrieve_handles_no_results() -> None:
     fake = FakeVectorStore([])
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        out = retrieve_mod.retrieve("anything", k=8)
+        out = retrieve_mod.retrieve("anything", initial_k=8)
 
     assert out == []
     assert fake.calls == [{"query": "anything", "k": 8}]
@@ -78,7 +78,7 @@ def test_retrieve_preserves_metadata() -> None:
     fake = FakeVectorStore([doc])
 
     with patch.object(retrieve_mod, "load_vectorstore", return_value=fake):
-        out = retrieve_mod.retrieve("Escalate", k=4)
+        out = retrieve_mod.retrieve("Escalate", initial_k=4)
 
     assert len(out) == 1
     assert out[0].metadata == meta

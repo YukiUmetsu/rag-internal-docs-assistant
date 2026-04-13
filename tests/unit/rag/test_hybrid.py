@@ -89,7 +89,7 @@ def test_merge_retrieval_results_deduplicates_overlap() -> None:
     assert len(merged) == 2
 
 
-def test_merge_retrieval_results_preserves_dense_order_first() -> None:
+def test_merge_retrieval_results_uses_reciprocal_rank_fusion() -> None:
     dense_first = make_doc(
         "Dense result A",
         source_doc_id="a",
@@ -112,4 +112,4 @@ def test_merge_retrieval_results_preserves_dense_order_first() -> None:
     )
 
     file_names = [doc.metadata["file_name"] for doc in merged]
-    assert file_names == ["a.md", "b.md", "c.md"]
+    assert file_names == ["b.md", "a.md", "c.md"]

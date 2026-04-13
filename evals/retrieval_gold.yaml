@@ -57,6 +57,7 @@ queries:
     query: "Tell me about the refund policy"
     expected_sources:
       - "refund_policy_2026.md"
+      - "refund_policy_2026.pdf"
 
   - id: refund_approval_current
     category: version_sensitive
