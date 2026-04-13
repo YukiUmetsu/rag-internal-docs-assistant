@@ -22,7 +22,7 @@ queries:
       - "payment_flow.md"
       - "failed_payment_playbook.md"
     expected_facts:
-      - "max_attempts = 3"
+      - "3"
 
   - id: exact_known_issues
     category: exact_term

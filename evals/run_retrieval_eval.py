@@ -4,8 +4,10 @@ import argparse
 import json
 from collections import defaultdict
 from pathlib import Path
+import time
 from typing import Any
-
+import re
+import unicodedata
 import yaml
 
 from src.rag.retrieve import retrieve
@@ -17,6 +19,12 @@ def load_gold_queries(path: str | Path) -> list[dict[str, Any]]:
         data = yaml.safe_load(f)
     return data["queries"]
 
+def normalize_eval_text(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+    text = text.replace("\u00a0", " ")  # no-break space
+    text = text.replace("\u202f", " ")  # narrow no-break space
+    text = re.sub(r"\s+", " ", text)
+    return text.strip().lower()
 
 def hit_at_k(retrieved_sources: list[str], expected_sources: list[str]) -> int:
     expected = set(expected_sources)
@@ -84,6 +92,7 @@ def evaluate_mode(
     )
 
     for item in gold_queries:
+        start_time = time.time()
         query_id = item["id"]
         category = item.get("category", "uncategorized")
         query = item["query"]
@@ -116,8 +125,9 @@ def evaluate_mode(
         source_hit = hit_at_k(retrieved_sources, expected_sources)
         rr = reciprocal_rank(retrieved_sources, expected_sources)
         top1 = top_1_correct(retrieved_sources, expected_sources)
-        fact_hit_value = fact_hit(answer_text, expected_facts)
-        all_facts_hit_value = all_facts_hit(answer_text, expected_facts)
+        normalized_answer = normalize_eval_text(answer_text)
+        fact_hit_value = fact_hit(normalized_answer, expected_facts)
+        all_facts_hit_value = all_facts_hit(normalized_answer, expected_facts)
 
         total_source_hit += source_hit
         total_mrr += rr
@@ -148,6 +158,14 @@ def evaluate_mode(
                 "all_facts_hit": all_facts_hit_value,
             }
         )
+
+        # --- rate limiting ---
+        elapsed = time.time() - start_time
+        wait_time = max(0, 20 - elapsed)
+
+        if wait_time > 0:
+            print(f"Sleeping {wait_time:.2f}s to respect rate limit...")
+            time.sleep(wait_time)
 
     n = len(gold_queries)
 
@@ -212,7 +230,7 @@ def main() -> None:
     parser.add_argument("--vectorstore-path", default="artifacts/faiss_index")
     parser.add_argument("--chunks-path", default="artifacts/chunks.jsonl")
     parser.add_argument("--output-path", default="evals/retrieval_eval_results.json")
-    parser.add_argument("--final-k", type=int, default=4)
+    parser.add_argument("--final-k", type=int, default=3)
     parser.add_argument("--initial-k", type=int, default=8)
     parser.add_argument("--max-chunks-per-source", type=int, default=2)
     parser.add_argument("--debug-log-path", default="artifacts/evals/rerank_debug.jsonl")
