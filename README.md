@@ -228,7 +228,6 @@ The dataset is intentionally small but high-quality to:
 ## 🚀 Future Improvements
 
 - Add LangSmith evaluation pipeline
-- Implement reranking models
 - Add semantic caching (Redis)
 - Introduce agentic workflows (LangGraph)
 - Add multi-turn conversation support
