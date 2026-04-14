@@ -70,7 +70,19 @@ def generate_answer_from_docs(
         {
             "question": question,
             "context": context,
-        }
+        },
+        config={
+            "run_name": "answer_generation",
+            "tags": ["rag", "generation"],
+            "metadata": {
+                "doc_count": len(docs),
+                "context_chars": len(context),
+                "source_files": [
+                    doc.metadata.get("file_name", "unknown")
+                    for doc in docs
+                ],
+            },
+        },
     )
 
     return response.content

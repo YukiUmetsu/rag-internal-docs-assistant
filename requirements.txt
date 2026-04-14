@@ -1,4 +1,5 @@
 langchain
+langsmith
 langchain-community
 langchain-openai
 faiss-cpu

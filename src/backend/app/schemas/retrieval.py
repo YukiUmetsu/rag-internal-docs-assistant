@@ -44,3 +44,5 @@ class HealthResponse(BaseModel):
     chunks_available: bool
     live_llm_configured: bool
     groq_model_name: str | None
+    langsmith_tracing_enabled: bool
+    langsmith_project: str | None

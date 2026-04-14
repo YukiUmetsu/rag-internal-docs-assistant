@@ -49,4 +49,6 @@ export type HealthResponse = {
   chunks_available: boolean;
   live_llm_configured: boolean;
   groq_model_name: string | null;
+  langsmith_tracing_enabled: boolean;
+  langsmith_project: string | null;
 };

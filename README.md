@@ -36,11 +36,22 @@ Open `http://localhost:5173` and try:
 
 - "What was the refund window in 2025?"
 - "How many PTO days do employees get?"
-- "Known Issues"
-- "SEV2"
 - "When is manager approval required for refunds?"
 
 The UI supports live generation, mock safe mode, and retrieval-only inspection. Mock mode is useful for demos when Groq quota is unavailable.
+
+### LangSmith Observability
+
+Set `LANGSMITH_API_KEY` to enable traces for backend chat and retrieval requests. The app defaults to the `acme-company-assistant-dev` project unless `LANGSMITH_PROJECT` is set.
+
+Each trace captures:
+
+- request mode, question length, and requested `final_k`
+- retrieval latency, detected year, source count, unique source count, and source metadata
+- generation metadata including context size, document count, and source files
+- final mode used, answer length, warnings, and end-to-end latency
+
+These fields are intended to support later LangSmith datasets and evaluators for correctness, groundedness, relevance, and retrieval relevance.
 
 ---
 

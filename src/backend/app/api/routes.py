@@ -21,6 +21,8 @@ def health() -> HealthResponse:
         chunks_available=path_exists(settings.chunks_path),
         live_llm_configured=bool(settings.groq_model_name and settings.groq_api_key_present),
         groq_model_name=settings.groq_model_name,
+        langsmith_tracing_enabled=settings.langsmith_tracing_enabled,
+        langsmith_project=settings.langsmith_project,
     )
 
 

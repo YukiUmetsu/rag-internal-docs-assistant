@@ -5,9 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.app.api.routes import router
 from src.backend.app.core.settings import get_settings
+from src.backend.app.core.tracing import configure_langsmith
 
 
 def create_app() -> FastAPI:
+    configure_langsmith()
     settings = get_settings()
     app = FastAPI(title=settings.app_name)
     app.add_middleware(

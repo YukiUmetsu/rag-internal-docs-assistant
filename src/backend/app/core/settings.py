@@ -18,6 +18,8 @@ class Settings:
     chunks_path: str
     groq_model_name: str | None
     groq_api_key_present: bool
+    langsmith_project: str | None
+    langsmith_tracing_enabled: bool
     cors_origins: tuple[str, ...]
 
 
@@ -29,12 +31,25 @@ def _parse_origins(value: str | None) -> tuple[str, ...]:
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    langsmith_api_key_present = bool(os.getenv("LANGSMITH_API_KEY"))
+    langsmith_tracing_requested = os.getenv("LANGSMITH_TRACING", "true").strip().lower()
+    langsmith_tracing_v2_requested = os.getenv("LANGSMITH_TRACING_V2", "true").strip().lower()
+    langsmith_enabled = (
+        langsmith_api_key_present
+        and langsmith_tracing_requested in {"1", "true", "yes", "on"}
+        and langsmith_tracing_v2_requested in {"1", "true", "yes", "on"}
+    )
+
     return Settings(
         app_name=os.getenv("APP_NAME", "Acme Company Assistant API"),
         vectorstore_path=os.getenv("VECTORSTORE_PATH", "artifacts/faiss_index"),
         chunks_path=os.getenv("CHUNKS_PATH", "artifacts/chunks.jsonl"),
         groq_model_name=os.getenv("GROQ_MODEL_NAME"),
         groq_api_key_present=bool(os.getenv("GROQ_API_KEY")),
+        langsmith_project=os.getenv("LANGSMITH_PROJECT", "acme-company-assistant-dev")
+        if langsmith_enabled
+        else None,
+        langsmith_tracing_enabled=langsmith_enabled,
         cors_origins=_parse_origins(os.getenv("BACKEND_CORS_ORIGINS")),
     )
 
