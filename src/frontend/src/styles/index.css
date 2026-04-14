@@ -1,25 +1,25 @@
 :root {
   color: #eef1f2;
-  background: #101112;
+  background: #10161d;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   letter-spacing: 0;
-  --bg: #101112;
-  --bg-soft: #151719;
-  --panel: #1d2023;
-  --panel-raised: #25292d;
-  --panel-muted: #17191b;
-  --line: #353b40;
-  --line-strong: #465057;
+  --bg: #10161d;
+  --bg-soft: #111820;
+  --panel: #171d24;
+  --panel-raised: #242933;
+  --panel-muted: #121820;
+  --line: #303843;
+  --line-strong: #465160;
   --text: #f2f4f5;
-  --text-soft: #c9ced2;
-  --muted: #8f979d;
-  --accent: #9fd1c6;
-  --accent-strong: #bce5dc;
-  --accent-ink: #12231f;
+  --text-soft: #c9ced3;
+  --muted: #929ba5;
+  --accent: #a6bdc9;
+  --accent-strong: #c1d3dc;
+  --accent-ink: #10171d;
   --danger: #ffb4a8;
   --warning: #ffd38a;
   --shadow: 0 20px 70px rgba(0, 0, 0, 0.36);
@@ -33,7 +33,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: linear-gradient(180deg, #141619 0%, var(--bg) 38%, #0d0e0f 100%);
+  background:
+    linear-gradient(115deg, rgba(29, 53, 60, 0.78) 0%, rgba(16, 22, 29, 0.96) 42%, rgba(36, 33, 61, 0.76) 100%),
+    #10161d;
 }
 
 button,
@@ -57,8 +59,11 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: min(100%, 1180px);
-  margin: 0 auto 54px;
+  width: calc(100% + 56px);
+  margin: -18px -28px 54px;
+  padding: 14px max(28px, calc((100vw - 1180px) / 2 + 28px));
+  border-bottom: 1px solid rgba(70, 81, 96, 0.32);
+  background: rgba(7, 10, 15, 0.72);
   color: var(--text-soft);
 }
 
@@ -83,7 +88,7 @@ button {
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   color: var(--accent-ink);
-  background: var(--accent);
+  background: linear-gradient(135deg, #7ba8b1 0%, #9f8fc5 100%);
   font-size: 0.82rem;
   font-weight: 900;
 }
@@ -92,6 +97,19 @@ button {
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.nav-links span {
+  border-radius: 8px;
+  padding: 7px 9px;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.nav-links span:hover {
+  color: var(--text);
+  background: rgba(166, 189, 201, 0.12);
 }
 
 .workspace {
@@ -122,7 +140,7 @@ button {
   width: min(100%, 760px);
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: linear-gradient(180deg, #2a2d31 0%, #23262a 100%);
+  background: linear-gradient(180deg, #252b34 0%, #1e242c 100%);
   box-shadow: var(--shadow);
 }
 
@@ -155,7 +173,7 @@ button {
   border-radius: 8px;
   padding: 8px 10px;
   color: var(--text-soft);
-  background: #1c1f22;
+  background: #161d24;
 }
 
 .composer input {
@@ -207,8 +225,15 @@ button {
 
 .composer button:disabled {
   cursor: not-allowed;
-  color: #575e63;
-  background: #34383c;
+  color: #78818a;
+  background: #2b313a;
+}
+
+.composer button.is-loading {
+  color: #d7e4e8;
+  background: linear-gradient(100deg, #303743 0%, #52606b 42%, #303743 78%);
+  background-size: 220% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 .examples {
@@ -228,7 +253,7 @@ button {
   border-radius: 8px;
   padding: 14px;
   color: var(--text-soft);
-  background: rgba(37, 41, 45, 0.88);
+  background: rgba(29, 35, 43, 0.92);
   text-align: left;
   line-height: 1.35;
 }
@@ -236,7 +261,7 @@ button {
 .examples button:hover {
   border-color: var(--line-strong);
   color: var(--text);
-  background: #2c3034;
+  background: #252b34;
 }
 
 .content-grid {
@@ -255,7 +280,7 @@ button {
 .debug-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(25, 27, 30, 0.94);
+  background: rgba(19, 25, 32, 0.96);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
 }
 
@@ -302,16 +327,27 @@ button {
 }
 
 .loading-stack {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .loading-stack span {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px 12px;
   color: var(--text-soft);
   background: var(--panel-muted);
+}
+
+.loading-line {
+  min-width: 190px;
+  background-image: linear-gradient(90deg, var(--muted), var(--text), var(--muted));
+  background-size: 220% 100%;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: text-wave 1.35s ease-in-out infinite;
 }
 
 .debug-chips {
@@ -337,7 +373,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
-  background: var(--panel-raised);
+  background: #202631;
 }
 
 .source-card-top strong {
@@ -386,7 +422,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
-  background: #181a1d;
+  background: #141a21;
 }
 
 .debug-panel summary {
@@ -477,7 +513,7 @@ button {
 
 .markdown-preview th {
   color: var(--text);
-  background: #202428;
+  background: #202733;
   font-weight: 800;
 }
 
@@ -528,5 +564,25 @@ button {
 
   .examples div {
     grid-template-columns: 1fr;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes text-wave {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
   }
 }

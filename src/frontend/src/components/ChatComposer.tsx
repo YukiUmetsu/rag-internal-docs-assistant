@@ -41,7 +41,11 @@ export function ChatComposer({
         <option value="mock">Mock safe mode</option>
         <option value="retrieve_only">Retrieve only</option>
       </select>
-      <button type="submit" disabled={isLoading || !question.trim()}>
+      <button
+        className={isLoading ? "is-loading" : undefined}
+        type="submit"
+        disabled={isLoading || !question.trim()}
+      >
         {isLoading ? "Searching..." : "Ask"}
       </button>
     </form>
