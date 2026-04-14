@@ -6,28 +6,36 @@ type Props = {
 };
 
 export function RetrievalDebugPanel({ response }: Props) {
+  const sourceCount = response?.sources.length ?? 0;
+
   return (
-    <aside className="debug-panel">
-      <div className="panel-header">
+    <details className="debug-panel">
+      <summary>
         <span>Sources</span>
-        {response ? <small>{response.latency_ms} ms</small> : null}
-      </div>
+        <small>
+          {response ? `${sourceCount} sources · ${response.latency_ms} ms` : "Run a search"}
+        </small>
+      </summary>
 
-      {response ? (
-        <div className="debug-chips" aria-label="Retrieval details">
-          <span>hybrid {response.retrieval.use_hybrid ? "on" : "off"}</span>
-          <span>rerank {response.retrieval.use_rerank ? "on" : "off"}</span>
-          <span>year {response.retrieval.detected_year ?? "none"}</span>
+      <div className="sources-body">
+        {response ? (
+          <div className="debug-chips" aria-label="Retrieval details">
+            <span>hybrid {response.retrieval.use_hybrid ? "on" : "off"}</span>
+            <span>rerank {response.retrieval.use_rerank ? "on" : "off"}</span>
+            <span>year {response.retrieval.detected_year ?? "none"}</span>
+          </div>
+        ) : null}
+
+        <div className="source-list">
+          {response?.sources.length ? (
+            response.sources.map((source) => (
+              <SourceCard key={`${source.rank}-${source.file_name}`} source={source} />
+            ))
+          ) : (
+            <p className="empty-sources">Retrieved sources will appear here.</p>
+          )}
         </div>
-      ) : null}
-
-      <div className="source-list">
-        {response?.sources.length ? (
-          response.sources.map((source) => <SourceCard key={`${source.rank}-${source.file_name}`} source={source} />)
-        ) : (
-          <p className="empty-sources">Retrieved source cards will appear here.</p>
-        )}
       </div>
-    </aside>
+    </details>
   );
 }

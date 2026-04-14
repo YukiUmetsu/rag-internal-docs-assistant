@@ -28,11 +28,6 @@ export function AnswerPanel({ response, isLoading, error }: Props) {
         <>
           {response.warning ? <p className="warning-message">{response.warning}</p> : null}
           <p className="answer-text">{response.answer}</p>
-          <div className="citation-row">
-            {response.sources.map((source) => (
-              <span key={`${source.rank}-${source.file_name}`}>Document {source.rank}</span>
-            ))}
-          </div>
         </>
       ) : null}
 

@@ -25,27 +25,24 @@ export function ChatComposer({
 
   return (
     <form className="composer" onSubmit={handleSubmit}>
-      <div className="composer-top">
-        <label htmlFor="question">Ask the internal assistant</label>
-        <select
-          value={mode}
-          onChange={(event) => onModeChange(event.target.value as RequestMode)}
-          aria-label="Answer mode"
-        >
-          <option value="live">Live answer</option>
-          <option value="mock">Mock safe mode</option>
-          <option value="retrieve_only">Retrieve only</option>
-        </select>
-      </div>
-      <textarea
+      <input
         id="question"
+        type="text"
         value={question}
         onChange={(event) => onQuestionChange(event.target.value)}
-        placeholder="Try: What was the refund window in 2025?"
-        rows={4}
+        placeholder="What was the refund window in 2025?"
       />
+      <select
+        value={mode}
+        onChange={(event) => onModeChange(event.target.value as RequestMode)}
+        aria-label="Answer mode"
+      >
+        <option value="live">Live answer</option>
+        <option value="mock">Mock safe mode</option>
+        <option value="retrieve_only">Retrieve only</option>
+      </select>
       <button type="submit" disabled={isLoading || !question.trim()}>
-        {isLoading ? "Working..." : "Ask assistant"}
+        {isLoading ? "Searching..." : "Ask"}
       </button>
     </form>
   );

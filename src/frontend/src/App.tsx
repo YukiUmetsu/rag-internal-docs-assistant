@@ -7,10 +7,8 @@ import { ChatComposer } from "./components/ChatComposer";
 import { ExamplePrompts } from "./components/ExamplePrompts";
 import { RetrievalDebugPanel } from "./components/RetrievalDebugPanel";
 
-const DEFAULT_PROMPT = "What was the refund window in 2025?";
-
 export default function App() {
-  const [question, setQuestion] = useState(DEFAULT_PROMPT);
+  const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<RequestMode>("mock");
   const [response, setResponse] = useState<ChatResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,14 +38,27 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <section className="workspace">
-        <header className="app-header">
-          <p>Acme internal knowledge</p>
-          <h1>Ask internal docs</h1>
-        </header>
+      <nav className="top-nav" aria-label="Primary">
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">
+            A
+          </span>
+          <span>Acme Assistant</span>
+        </div>
+        <div className="nav-links" aria-label="Demo context">
+          <span>Docs</span>
+          <span>Retrieval</span>
+          <span>API</span>
+        </div>
+      </nav>
 
-        <div className="content-grid">
-          <section className="conversation">
+      <section className="workspace">
+        <section className="prompt-stage" aria-label="Assistant search">
+          <header className="app-header">
+            <p>Internal knowledge search</p>
+          </header>
+
+          <div className="prompt-console">
             <ChatComposer
               question={question}
               mode={mode}
@@ -56,11 +67,16 @@ export default function App() {
               onModeChange={setMode}
               onSubmit={handleSubmit}
             />
-            <ExamplePrompts onSelect={setQuestion} />
-            <AnswerPanel response={response} isLoading={isLoading} error={error} />
-          </section>
+          </div>
 
-          <RetrievalDebugPanel response={response} />
+          <ExamplePrompts onSelect={setQuestion} />
+        </section>
+
+        <div className="content-grid">
+          <section className="conversation">
+            <AnswerPanel response={response} isLoading={isLoading} error={error} />
+            {response?.sources.length ? <RetrievalDebugPanel response={response} /> : null}
+          </section>
         </div>
       </section>
     </main>
