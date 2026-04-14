@@ -9,28 +9,17 @@ export function RetrievalDebugPanel({ response }: Props) {
   return (
     <aside className="debug-panel">
       <div className="panel-header">
-        <span>Retrieval</span>
+        <span>Sources</span>
         {response ? <small>{response.latency_ms} ms</small> : null}
       </div>
 
-      <div className="debug-grid">
-        <div>
-          <span>Hybrid</span>
-          <strong>{response?.retrieval.use_hybrid ? "on" : "off"}</strong>
+      {response ? (
+        <div className="debug-chips" aria-label="Retrieval details">
+          <span>hybrid {response.retrieval.use_hybrid ? "on" : "off"}</span>
+          <span>rerank {response.retrieval.use_rerank ? "on" : "off"}</span>
+          <span>year {response.retrieval.detected_year ?? "none"}</span>
         </div>
-        <div>
-          <span>Rerank</span>
-          <strong>{response?.retrieval.use_rerank ? "on" : "off"}</strong>
-        </div>
-        <div>
-          <span>Year filter</span>
-          <strong>{response?.retrieval.detected_year ?? "none"}</strong>
-        </div>
-        <div>
-          <span>Initial k</span>
-          <strong>{response?.retrieval.initial_k ?? 12}</strong>
-        </div>
-      </div>
+      ) : null}
 
       <div className="source-list">
         {response?.sources.length ? (

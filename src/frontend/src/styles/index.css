@@ -33,7 +33,7 @@ button {
 
 .app-shell {
   min-height: 100vh;
-  padding: 28px;
+  padding: 34px 28px;
 }
 
 .workspace {
@@ -42,67 +42,23 @@ button {
 }
 
 .app-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
+  text-align: center;
 }
 
 .app-header p,
 .examples p,
-.debug-grid span,
-.status-bar span {
+.debug-chips span {
   margin: 0;
   color: #5d6974;
   font-size: 0.82rem;
 }
 
 .app-header h1 {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   color: #101418;
-  font-size: 3rem;
+  font-size: 2.7rem;
   line-height: 1;
-}
-
-.app-header > span {
-  max-width: 430px;
-  color: #45515d;
-  line-height: 1.5;
-}
-
-.status-bar {
-  display: grid;
-  grid-template-columns: 100px repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  overflow: hidden;
-  margin-bottom: 18px;
-  border: 1px solid #d9e0e7;
-  border-radius: 8px;
-  background: #d9e0e7;
-}
-
-.status-bar img {
-  width: 100%;
-  height: 86px;
-  object-fit: cover;
-}
-
-.status-bar div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  padding: 14px 16px;
-  background: #ffffff;
-}
-
-.status-bar strong {
-  overflow: hidden;
-  color: #101418;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .content-grid {
@@ -258,27 +214,18 @@ button {
   align-self: start;
 }
 
-.debug-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
+.debug-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
-.debug-grid div {
+.debug-chips span {
   border: 1px solid #dbe2e9;
   border-radius: 8px;
-  padding: 12px;
+  padding: 6px 8px;
   background: #fbfcfe;
-}
-
-.debug-grid strong {
-  display: block;
-  overflow: hidden;
-  margin-top: 5px;
-  color: #101418;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .source-list {
@@ -423,18 +370,8 @@ button {
     padding: 18px;
   }
 
-  .app-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .status-bar,
   .content-grid {
     grid-template-columns: 1fr;
-  }
-
-  .status-bar img {
-    height: 150px;
   }
 
   .app-header h1 {
