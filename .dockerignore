@@ -1,0 +1,13 @@
+.git
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+*.log
+.DS_Store
+.env
+.vscode
+.history
+artifacts
+src/frontend/node_modules
+src/frontend/dist

@@ -8,28 +8,29 @@ This project simulates a realistic company knowledge assistant with versioned do
 
 ## Development setup
 
-- Create and activate a Python virtual environment (recommended).
-- Install app dependencies: `pip install -r requirements.txt`
-- Install dev/CI dependencies (pinned): `pip install -r requirements_dev.txt`
+- Install Docker Desktop.
 - Copy `.env.example` to `.env` and set values when running LLM-backed commands.
-- Run tests from the repo root: `python -m pytest`
+- Build the app images: `make install`
+- Run tests from the repo root: `make test`
+
+For local non-Docker debugging, use the `local-*` Makefile targets.
+
+```bash
+make local-backend
+make local-frontend
+make local-test
+```
+
+The default Makefile targets use Docker.
 
 ---
 
 ## Web Demo
 
-Run the FastAPI backend:
+Run the Dockerized app:
 
 ```bash
-uvicorn src.backend.app.main:app --reload
-```
-
-Run the React frontend:
-
-```bash
-cd src/frontend
-npm install
-npm run dev
+make dev
 ```
 
 Open `http://localhost:5173` and try:
@@ -39,6 +40,27 @@ Open `http://localhost:5173` and try:
 - "When is manager approval required for refunds?"
 
 The UI supports live generation, mock safe mode, and retrieval-only inspection. Mock mode is useful for demos when Groq quota is unavailable.
+
+### Docker Web Demo
+
+Stage 1 Docker support runs the existing FAISS-backed app only. It does not add Postgres, Redis, Celery, or pgvector yet.
+
+```bash
+make dev
+```
+
+Open `http://localhost:5173`. The frontend calls the backend at `http://localhost:8000`.
+
+Useful Docker commands:
+
+```bash
+make logs-backend
+make logs-frontend
+make test
+make stop
+```
+
+The dev compose stack bind-mounts the repo, including `data/` and `artifacts/`, so it uses the same FAISS index and chunk files as local development.
 
 ### LangSmith Observability
 

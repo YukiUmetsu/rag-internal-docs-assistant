@@ -18,24 +18,29 @@ EVAL_GOLD_PATH ?= evals/retrieval_gold.yaml
 EVAL_OUTPUT_PATH ?= artifacts/evals/retrieval_eval_results.json
 EVAL_BASELINE_PATH ?= evals/baselines/faiss_hybrid_rerank.json
 EVAL_DEBUG_LOG_PATH ?= artifacts/evals/rerank_debug.jsonl
+DOCKER_COMPOSE ?= docker compose
+DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend backend frontend test eval eval-baseline eval-compare
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend backend frontend test eval eval-baseline eval-compare docker-up docker-down docker-logs docker-test local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare
 
 help:
 	@echo "Available targets:"
-	@echo "  make install           Install Python and frontend dependencies"
-	@echo "  make dev               Start backend and frontend dev servers"
-	@echo "  make stop              Gracefully stop servers started by make dev"
-	@echo "  make logs-backend      Follow the backend server log"
-	@echo "  make logs-frontend     Follow the frontend server log"
-	@echo "  make backend           Start only the FastAPI backend"
-	@echo "  make frontend          Start only the Vite frontend"
-	@echo "  make test              Run the Python test suite"
-	@echo "  make eval              Run retrieval evals without answer generation"
-	@echo "  make eval-baseline     Regenerate the FAISS hybrid+rerank baseline"
-	@echo "  make eval-compare      Run evals and compare against the baseline"
+	@echo "  make install           Build Docker images"
+	@echo "  make dev               Build and start the Docker dev stack"
+	@echo "  make stop              Stop the Docker dev stack"
+	@echo "  make logs-backend      Follow Docker backend logs"
+	@echo "  make logs-frontend     Follow Docker frontend logs"
+	@echo "  make backend           Start only the Docker backend service"
+	@echo "  make frontend          Start the Docker frontend service"
+	@echo "  make test              Run pytest inside the backend Docker image"
+	@echo "  make eval              Run retrieval evals inside the backend Docker image"
+	@echo "  make eval-baseline     Regenerate the FAISS baseline inside Docker"
+	@echo "  make eval-compare      Compare evals against the baseline inside Docker"
+	@echo "  make local-dev         Start local non-Docker dev servers"
+	@echo "  make local-test        Run local non-Docker pytest"
 
-install: install-python install-frontend
+install:
+	$(DOCKER_COMPOSE) build
 
 install-python:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -43,7 +48,58 @@ install-python:
 install-frontend:
 	$(NPM) --prefix src/frontend install
 
-dev:
+dev: docker-up
+
+stop: docker-down
+
+logs-backend:
+	$(DOCKER_COMPOSE) logs -f api
+
+logs-frontend:
+	$(DOCKER_COMPOSE) logs -f frontend
+
+backend:
+	$(DOCKER_COMPOSE) up --build api
+
+frontend:
+	$(DOCKER_COMPOSE) up --build frontend
+
+test: docker-test
+
+eval:
+	$(DOCKER_API_RUN) python -m evals.run_retrieval_eval \
+		--gold-path $(EVAL_GOLD_PATH) \
+		--output-path $(EVAL_OUTPUT_PATH) \
+		--debug-log-path $(EVAL_DEBUG_LOG_PATH) \
+		--skip-answer-generation \
+		--require-source-hit-rate 1.0 \
+		--require-mrr 1.0 \
+		--require-top-1-accuracy 1.0
+
+eval-baseline:
+	$(DOCKER_API_RUN) python -m evals.run_retrieval_eval \
+		--gold-path $(EVAL_GOLD_PATH) \
+		--output-path $(EVAL_BASELINE_PATH) \
+		--debug-log-path $(EVAL_DEBUG_LOG_PATH) \
+		--modes hybrid_rerank \
+		--skip-answer-generation \
+		--require-source-hit-rate 1.0 \
+		--require-mrr 1.0 \
+		--require-top-1-accuracy 1.0
+
+eval-compare:
+	$(DOCKER_API_RUN) python -m evals.run_retrieval_eval \
+		--gold-path $(EVAL_GOLD_PATH) \
+		--output-path $(EVAL_OUTPUT_PATH) \
+		--debug-log-path $(EVAL_DEBUG_LOG_PATH) \
+		--modes hybrid_rerank \
+		--skip-answer-generation \
+		--require-source-hit-rate 1.0 \
+		--require-mrr 1.0 \
+		--require-top-1-accuracy 1.0 \
+		--compare-baseline $(EVAL_BASELINE_PATH)
+
+local-dev:
 	@echo "Starting FastAPI backend at http://$(BACKEND_HOST):$(BACKEND_PORT)"
 	@echo "Starting Vite frontend at http://$(FRONTEND_HOST):$(FRONTEND_PORT)"
 	@existing_sessions="$$( { $(SCREEN) -list || true; } | awk '/[.]($(BACKEND_SESSION)|$(FRONTEND_SESSION))[[:space:]]/ { print $$1 }')"; \
@@ -64,9 +120,9 @@ dev:
 	@echo "Logs:"
 	@echo "  $(BACKEND_LOG)"
 	@echo "  $(FRONTEND_LOG)"
-	@echo "Use 'make stop' to stop both gracefully."
+	@echo "Use 'make local-stop' to stop both gracefully."
 
-stop:
+local-stop:
 	@frontend_sessions="$$( { $(SCREEN) -list || true; } | awk '/[.]$(FRONTEND_SESSION)[[:space:]]/ { print $$1 }')"; \
 	if [[ -n "$$frontend_sessions" ]]; then \
 		while read -r session; do \
@@ -96,24 +152,24 @@ stop:
 		echo "Uvicorn backend session is not running"; \
 	fi
 
-logs-backend:
+local-logs-backend:
 	@touch $(BACKEND_LOG)
 	tail -f $(BACKEND_LOG)
 
-logs-frontend:
+local-logs-frontend:
 	@touch $(FRONTEND_LOG)
 	tail -f $(FRONTEND_LOG)
 
-backend:
+local-backend:
 	$(PYTHON) -m uvicorn src.backend.app.main:app --reload --host $(BACKEND_HOST) --port $(BACKEND_PORT)
 
-frontend:
+local-frontend:
 	$(NPM) --prefix src/frontend run dev -- --host $(FRONTEND_HOST) --port $(FRONTEND_PORT)
 
-test:
+local-test:
 	$(PYTHON) -m pytest
 
-eval:
+local-eval:
 	$(PYTHON) -m evals.run_retrieval_eval \
 		--gold-path $(EVAL_GOLD_PATH) \
 		--output-path $(EVAL_OUTPUT_PATH) \
@@ -123,7 +179,7 @@ eval:
 		--require-mrr 1.0 \
 		--require-top-1-accuracy 1.0
 
-eval-baseline:
+local-eval-baseline:
 	$(PYTHON) -m evals.run_retrieval_eval \
 		--gold-path $(EVAL_GOLD_PATH) \
 		--output-path $(EVAL_BASELINE_PATH) \
@@ -134,7 +190,7 @@ eval-baseline:
 		--require-mrr 1.0 \
 		--require-top-1-accuracy 1.0
 
-eval-compare:
+local-eval-compare:
 	$(PYTHON) -m evals.run_retrieval_eval \
 		--gold-path $(EVAL_GOLD_PATH) \
 		--output-path $(EVAL_OUTPUT_PATH) \
@@ -145,3 +201,15 @@ eval-compare:
 		--require-mrr 1.0 \
 		--require-top-1-accuracy 1.0 \
 		--compare-baseline $(EVAL_BASELINE_PATH)
+
+docker-up:
+	$(DOCKER_COMPOSE) up --build
+
+docker-down:
+	$(DOCKER_COMPOSE) down
+
+docker-logs:
+	$(DOCKER_COMPOSE) logs -f
+
+docker-test:
+	$(DOCKER_COMPOSE) run --rm api python -m pytest
