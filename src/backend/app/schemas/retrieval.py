@@ -45,6 +45,10 @@ class HealthResponse(BaseModel):
     database_available: bool
     pgvector_available: bool
     database_error: str | None = None
+    redis_available: bool
+    redis_error: str | None = None
+    celery_worker_available: bool
+    celery_worker_error: str | None = None
     live_llm_configured: bool
     groq_model_name: str | None
     langsmith_tracing_enabled: bool

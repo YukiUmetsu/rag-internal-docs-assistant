@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from langchain_core.documents import Document
 
 from src.backend.app.main import app
+from src.backend.app.core.queue import CeleryWorkerHealth, DiagnosticTaskStatus, RedisHealth
 from src.backend.app.schemas.chat import ChatResponse
 from src.backend.app.schemas.retrieval import RetrievalMetadata
 from src.backend.app.services import rag_service
@@ -27,13 +28,22 @@ def make_doc(file_name: str = "refund_policy_2025.md") -> Document:
 
 
 def test_health_endpoint_returns_status() -> None:
-    response = client.get("/api/health")
+    with (
+        patch("src.backend.app.api.routes.check_redis_health", return_value=RedisHealth(available=True)),
+        patch(
+            "src.backend.app.api.routes.check_celery_worker_health",
+            return_value=CeleryWorkerHealth(available=True),
+        ),
+    ):
+        response = client.get("/api/health")
 
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
     assert "vectorstore_available" in body
     assert "chunks_available" in body
+    assert "redis_available" in body
+    assert "celery_worker_available" in body
     assert "live_llm_configured" in body
 
 
@@ -129,3 +139,36 @@ def test_chat_response_schema_allows_retrieve_only_mode() -> None:
     )
 
     assert response.mode_used == "retrieve_only"
+
+
+def test_celery_ping_endpoint_enqueues_task() -> None:
+    with patch("src.backend.app.api.routes.enqueue_diagnostic_task", return_value="task-123"):
+        response = client.post(
+            "/api/diagnostics/celery/ping",
+            json={"message": "ping"},
+        )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["task_id"] == "task-123"
+    assert body["state"] == "PENDING"
+
+
+def test_celery_ping_status_endpoint_serializes_task_state() -> None:
+    with patch(
+        "src.backend.app.api.routes.get_diagnostic_task_status",
+        return_value=DiagnosticTaskStatus(
+            task_id="task-123",
+            state="SUCCESS",
+            ready=True,
+            result={"message": "pong", "status": "ok"},
+            traceback=None,
+        ),
+    ):
+        response = client.get("/api/diagnostics/celery/task-123")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "task-123"
+    assert body["state"] == "SUCCESS"
+    assert body["result"]["status"] == "ok"

@@ -23,7 +23,7 @@ DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
 POSTGRES_DB ?= acme_assistant
 POSTGRES_USER ?= acme
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend backend frontend test eval eval-baseline eval-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare
 
 help:
 	@echo "Available targets:"
@@ -32,6 +32,7 @@ help:
 	@echo "  make stop              Stop the Docker dev stack"
 	@echo "  make logs-backend      Follow Docker backend logs"
 	@echo "  make logs-frontend     Follow Docker frontend logs"
+	@echo "  make logs-worker       Follow Docker worker logs"
 	@echo "  make backend           Start only the Docker backend service"
 	@echo "  make frontend          Start the Docker frontend service"
 	@echo "  make test              Run pytest inside the backend Docker image"
@@ -40,6 +41,7 @@ help:
 	@echo "  make eval-compare      Compare evals against the baseline inside Docker"
 	@echo "  make docker-migrate    Apply database migrations"
 	@echo "  make docker-db-shell   Open a psql shell in the Postgres container"
+	@echo "  make docker-worker-logs Follow Docker worker logs"
 	@echo "  make local-dev         Start local non-Docker dev servers"
 	@echo "  make local-test        Run local non-Docker pytest"
 
@@ -61,6 +63,9 @@ logs-backend:
 
 logs-frontend:
 	$(DOCKER_COMPOSE) logs -f frontend
+
+logs-worker:
+	$(DOCKER_COMPOSE) logs -f worker
 
 backend:
 	$(DOCKER_COMPOSE) up --build api
@@ -216,6 +221,8 @@ docker-logs:
 	$(DOCKER_COMPOSE) logs -f
 
 docker-test:
+	$(DOCKER_COMPOSE) build api worker
+	$(DOCKER_COMPOSE) up -d postgres redis worker
 	$(DOCKER_COMPOSE) run --rm api python -m pytest
 
 docker-migrate:
@@ -223,3 +230,5 @@ docker-migrate:
 
 docker-db-shell:
 	$(DOCKER_COMPOSE) exec postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+
+docker-worker-logs: logs-worker

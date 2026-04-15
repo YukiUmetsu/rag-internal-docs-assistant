@@ -18,3 +18,5 @@ uvicorn
 sqlalchemy
 alembic
 psycopg[binary]
+celery
+redis
