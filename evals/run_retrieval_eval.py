@@ -242,6 +242,95 @@ def print_mode_summary(mode_name: str, mode_result: dict[str, Any]) -> None:
             )
 
 
+def compare_results_to_baseline(
+    results: dict[str, Any],
+    baseline_path: str | Path,
+) -> None:
+    baseline = json.loads(Path(baseline_path).read_text(encoding="utf-8"))
+    regressions: list[str] = []
+
+    for mode_name, baseline_result in baseline.items():
+        if mode_name not in results:
+            regressions.append(f"{mode_name}: missing from current results")
+            continue
+
+        current_result = results[mode_name]
+        current_summary = current_result["summary"]
+        baseline_summary = baseline_result["summary"]
+
+        for metric in ("source_hit_rate", "mrr", "top_1_accuracy"):
+            current_value = current_summary[metric]
+            baseline_value = baseline_summary[metric]
+            if current_value < baseline_value:
+                regressions.append(
+                    f"{mode_name}: {metric} regressed from "
+                    f"{baseline_value:.3f} to {current_value:.3f}"
+                )
+
+        current_rows = {row["id"]: row for row in current_result["rows"]}
+        baseline_rows = {row["id"]: row for row in baseline_result["rows"]}
+
+        for query_id, baseline_row in baseline_rows.items():
+            current_row = current_rows.get(query_id)
+            if current_row is None:
+                regressions.append(f"{mode_name}/{query_id}: missing current row")
+                continue
+
+            for metric in ("source_hit", "mrr", "top_1_correct"):
+                if current_row[metric] < baseline_row[metric]:
+                    regressions.append(
+                        f"{mode_name}/{query_id}: {metric} regressed from "
+                        f"{baseline_row[metric]} to {current_row[metric]}; "
+                        f"expected={baseline_row['expected_sources']}; "
+                        f"baseline={baseline_row['retrieved_sources']}; "
+                        f"current={current_row['retrieved_sources']}"
+                    )
+
+    if regressions:
+        print("\nBaseline comparison failed:")
+        for regression in regressions:
+            print(f"  - {regression}")
+        raise SystemExit(1)
+
+    print(f"\nBaseline comparison passed: {baseline_path}")
+
+
+def require_minimum_metrics(
+    results: dict[str, Any],
+    *,
+    mode_name: str,
+    source_hit_rate: float | None,
+    mrr: float | None,
+    top_1_accuracy: float | None,
+) -> None:
+    if mode_name not in results:
+        raise SystemExit(f"Required mode was not evaluated: {mode_name}")
+
+    summary = results[mode_name]["summary"]
+    requirements = {
+        "source_hit_rate": source_hit_rate,
+        "mrr": mrr,
+        "top_1_accuracy": top_1_accuracy,
+    }
+    failures = []
+
+    for metric, minimum in requirements.items():
+        if minimum is None:
+            continue
+        current_value = summary[metric]
+        if current_value < minimum:
+            failures.append(
+                f"{mode_name}: {metric} expected >= {minimum:.3f}, "
+                f"got {current_value:.3f}"
+            )
+
+    if failures:
+        print("\nMetric requirements failed:")
+        for failure in failures:
+            print(f"  - {failure}")
+        raise SystemExit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gold-path", default="evals/retrieval_gold.yaml")
@@ -253,6 +342,25 @@ def main() -> None:
     parser.add_argument("--max-chunks-per-source", type=int, default=2)
     parser.add_argument("--debug-log-path", default="artifacts/evals/rerank_debug.jsonl")
     parser.add_argument(
+        "--modes",
+        nargs="+",
+        choices=["dense_only", "hybrid_only", "hybrid_rerank"],
+        default=["dense_only", "hybrid_only", "hybrid_rerank"],
+        help="Retrieval modes to evaluate.",
+    )
+    parser.add_argument(
+        "--compare-baseline",
+        help="Compare current results to a baseline JSON file and fail on regressions.",
+    )
+    parser.add_argument(
+        "--require-mode",
+        default="hybrid_rerank",
+        help="Mode used for minimum metric requirements.",
+    )
+    parser.add_argument("--require-source-hit-rate", type=float)
+    parser.add_argument("--require-mrr", type=float)
+    parser.add_argument("--require-top-1-accuracy", type=float)
+    parser.add_argument(
         "--skip-answer-generation",
         action="store_true",
         help="Evaluate retrieval metrics without calling the answer-generation LLM.",
@@ -261,47 +369,28 @@ def main() -> None:
 
     gold_queries = load_gold_queries(args.gold_path)
 
-    results = {
-        "dense_only": evaluate_mode(
-            gold_queries,
-            mode_name="dense_only",
-            vectorstore_path=args.vectorstore_path,
-            chunks_path=args.chunks_path,
-            use_hybrid=False,
-            use_rerank=False,
-            final_k=args.final_k,
-            initial_k=args.initial_k,
-            max_chunks_per_source=args.max_chunks_per_source,
-            debug_log_path=args.debug_log_path,
-            skip_answer_generation=args.skip_answer_generation,
-        ),
-        "hybrid_only": evaluate_mode(
-            gold_queries,
-            mode_name="hybrid_only",
-            vectorstore_path=args.vectorstore_path,
-            chunks_path=args.chunks_path,
-            use_hybrid=True,
-            use_rerank=False,
-            final_k=args.final_k,
-            initial_k=args.initial_k,
-            max_chunks_per_source=args.max_chunks_per_source,
-            debug_log_path=args.debug_log_path,
-            skip_answer_generation=args.skip_answer_generation,
-        ),
-        "hybrid_rerank": evaluate_mode(
-            gold_queries,
-            mode_name="hybrid_rerank",
-            vectorstore_path=args.vectorstore_path,
-            chunks_path=args.chunks_path,
-            use_hybrid=True,
-            use_rerank=True,
-            final_k=args.final_k,
-            initial_k=args.initial_k,
-            max_chunks_per_source=args.max_chunks_per_source,
-            debug_log_path=args.debug_log_path,
-            skip_answer_generation=args.skip_answer_generation,
-        ),
+    mode_configs = {
+        "dense_only": {"use_hybrid": False, "use_rerank": False},
+        "hybrid_only": {"use_hybrid": True, "use_rerank": False},
+        "hybrid_rerank": {"use_hybrid": True, "use_rerank": True},
     }
+    results = {}
+
+    for mode_name in args.modes:
+        config = mode_configs[mode_name]
+        results[mode_name] = evaluate_mode(
+            gold_queries,
+            mode_name=mode_name,
+            vectorstore_path=args.vectorstore_path,
+            chunks_path=args.chunks_path,
+            use_hybrid=config["use_hybrid"],
+            use_rerank=config["use_rerank"],
+            final_k=args.final_k,
+            initial_k=args.initial_k,
+            max_chunks_per_source=args.max_chunks_per_source,
+            debug_log_path=args.debug_log_path,
+            skip_answer_generation=args.skip_answer_generation,
+        )
 
     output_path = Path(args.output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -309,6 +398,17 @@ def main() -> None:
 
     for mode_name, mode_result in results.items():
         print_mode_summary(mode_name, mode_result)
+
+    require_minimum_metrics(
+        results,
+        mode_name=args.require_mode,
+        source_hit_rate=args.require_source_hit_rate,
+        mrr=args.require_mrr,
+        top_1_accuracy=args.require_top_1_accuracy,
+    )
+
+    if args.compare_baseline:
+        compare_results_to_baseline(results, args.compare_baseline)
 
 
 if __name__ == "__main__":

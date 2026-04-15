@@ -1,0 +1,302 @@
+{
+  "hybrid_rerank": {
+    "summary": {
+      "num_queries": 11,
+      "source_hit_rate": 1.0,
+      "mrr": 1.0,
+      "top_1_accuracy": 1.0,
+      "fact_hit_rate": null,
+      "all_facts_hit_rate": null,
+      "use_hybrid": true,
+      "use_rerank": true,
+      "skip_answer_generation": true
+    },
+    "category_summary": {
+      "latest_policy_fact": {
+        "count": 2,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": null,
+        "all_facts_hit_rate": null
+      },
+      "factual_lookup": {
+        "count": 1,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": null,
+        "all_facts_hit_rate": null
+      },
+      "exact_term": {
+        "count": 3,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": null,
+        "all_facts_hit_rate": null
+      },
+      "ambiguous": {
+        "count": 2,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": null,
+        "all_facts_hit_rate": null
+      },
+      "version_sensitive": {
+        "count": 1,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": null,
+        "all_facts_hit_rate": null
+      },
+      "exact_year": {
+        "count": 2,
+        "source_hit_rate": 1.0,
+        "mrr": 1.0,
+        "top_1_accuracy": 1.0,
+        "fact_hit_rate": null,
+        "all_facts_hit_rate": null
+      }
+    },
+    "rows": [
+      {
+        "id": "pto_days_current",
+        "category": "latest_policy_fact",
+        "query": "How many PTO days do employees get?",
+        "expected_sources": [
+          "pto_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "pto_policy_2026.md",
+          "pto_policy_2025.md",
+          "pto_policy_2025.md"
+        ],
+        "expected_facts": [
+          "18 days"
+        ],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "refund_window_current",
+        "category": "latest_policy_fact",
+        "query": "What is the refund window?",
+        "expected_sources": [
+          "refund_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2025.md",
+          "refund_policy_2026.pdf"
+        ],
+        "expected_facts": [
+          "30 days"
+        ],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "retry_attempts_exact",
+        "category": "factual_lookup",
+        "query": "How many retry attempts are allowed?",
+        "expected_sources": [
+          "payment_flow.md",
+          "failed_payment_playbook.md"
+        ],
+        "retrieved_sources": [
+          "failed_payment_playbook.md",
+          "payment_flow.md",
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [
+          "3"
+        ],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "exact_known_issues",
+        "category": "exact_term",
+        "query": "Known Issues",
+        "expected_sources": [
+          "failed_payment_playbook.md"
+        ],
+        "retrieved_sources": [
+          "failed_payment_playbook.md",
+          "refund_policy_2026.md",
+          "payment_failure_spike.md"
+        ],
+        "expected_facts": [],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "exact_sev2",
+        "category": "exact_term",
+        "query": "SEV2",
+        "expected_sources": [
+          "payment_failure_spike.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [
+          "partial degradation"
+        ],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "exact_on_call",
+        "category": "exact_term",
+        "query": "On-Call",
+        "expected_sources": [
+          "payment_failure_spike.md"
+        ],
+        "retrieved_sources": [
+          "payment_failure_spike.md",
+          "payment_failure_spike.md",
+          "failed_payment_playbook.md"
+        ],
+        "expected_facts": [],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "pto_policy_ambiguous",
+        "category": "ambiguous",
+        "query": "What is the PTO policy?",
+        "expected_sources": [
+          "pto_policy_2026.md"
+        ],
+        "retrieved_sources": [
+          "pto_policy_2026.md",
+          "pto_policy_2025.md",
+          "pto_policy_2026.md"
+        ],
+        "expected_facts": [
+          "18 days"
+        ],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "refund_policy_ambiguous",
+        "category": "ambiguous",
+        "query": "Tell me about the refund policy",
+        "expected_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2026.pdf"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2025.md",
+          "refund_policy_2026.pdf"
+        ],
+        "expected_facts": [],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "refund_approval_current",
+        "category": "version_sensitive",
+        "query": "When is manager approval required for refunds?",
+        "expected_sources": [
+          "refund_policy_2026.md",
+          "refund_policy_2026.pdf"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2026.pdf",
+          "refund_policy_2026.md",
+          "refund_policy_2025.md"
+        ],
+        "expected_facts": [],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "refund_window_2025",
+        "category": "exact_year",
+        "query": "What was the refund window in 2025?",
+        "expected_sources": [
+          "refund_policy_2025.md"
+        ],
+        "retrieved_sources": [
+          "refund_policy_2025.md",
+          "refund_policy_2025.md",
+          "pto_policy_2025.md"
+        ],
+        "expected_facts": [],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      },
+      {
+        "id": "pto_days_2025",
+        "category": "exact_year",
+        "query": "How many PTO days did employees get in 2025?",
+        "expected_sources": [
+          "pto_policy_2025.md"
+        ],
+        "retrieved_sources": [
+          "pto_policy_2025.md",
+          "pto_policy_2025.md",
+          "refund_policy_2025.md"
+        ],
+        "expected_facts": [
+          "15 days"
+        ],
+        "answer": null,
+        "source_hit": 1,
+        "mrr": 1.0,
+        "top_1_correct": 1,
+        "fact_hit": null,
+        "all_facts_hit": null
+      }
+    ]
+  }
+}

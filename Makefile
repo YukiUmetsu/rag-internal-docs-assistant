@@ -14,8 +14,12 @@ FRONTEND_SESSION ?= acme-assistant-frontend
 LOG_DIR ?= artifacts/dev
 BACKEND_LOG ?= $(LOG_DIR)/backend.log
 FRONTEND_LOG ?= $(LOG_DIR)/frontend.log
+EVAL_GOLD_PATH ?= evals/retrieval_gold.yaml
+EVAL_OUTPUT_PATH ?= artifacts/evals/retrieval_eval_results.json
+EVAL_BASELINE_PATH ?= evals/baselines/faiss_hybrid_rerank.json
+EVAL_DEBUG_LOG_PATH ?= artifacts/evals/rerank_debug.jsonl
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend backend frontend test
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend backend frontend test eval eval-baseline eval-compare
 
 help:
 	@echo "Available targets:"
@@ -27,6 +31,9 @@ help:
 	@echo "  make backend           Start only the FastAPI backend"
 	@echo "  make frontend          Start only the Vite frontend"
 	@echo "  make test              Run the Python test suite"
+	@echo "  make eval              Run retrieval evals without answer generation"
+	@echo "  make eval-baseline     Regenerate the FAISS hybrid+rerank baseline"
+	@echo "  make eval-compare      Run evals and compare against the baseline"
 
 install: install-python install-frontend
 
@@ -105,3 +112,36 @@ frontend:
 
 test:
 	$(PYTHON) -m pytest
+
+eval:
+	$(PYTHON) -m evals.run_retrieval_eval \
+		--gold-path $(EVAL_GOLD_PATH) \
+		--output-path $(EVAL_OUTPUT_PATH) \
+		--debug-log-path $(EVAL_DEBUG_LOG_PATH) \
+		--skip-answer-generation \
+		--require-source-hit-rate 1.0 \
+		--require-mrr 1.0 \
+		--require-top-1-accuracy 1.0
+
+eval-baseline:
+	$(PYTHON) -m evals.run_retrieval_eval \
+		--gold-path $(EVAL_GOLD_PATH) \
+		--output-path $(EVAL_BASELINE_PATH) \
+		--debug-log-path $(EVAL_DEBUG_LOG_PATH) \
+		--modes hybrid_rerank \
+		--skip-answer-generation \
+		--require-source-hit-rate 1.0 \
+		--require-mrr 1.0 \
+		--require-top-1-accuracy 1.0
+
+eval-compare:
+	$(PYTHON) -m evals.run_retrieval_eval \
+		--gold-path $(EVAL_GOLD_PATH) \
+		--output-path $(EVAL_OUTPUT_PATH) \
+		--debug-log-path $(EVAL_DEBUG_LOG_PATH) \
+		--modes hybrid_rerank \
+		--skip-answer-generation \
+		--require-source-hit-rate 1.0 \
+		--require-mrr 1.0 \
+		--require-top-1-accuracy 1.0 \
+		--compare-baseline $(EVAL_BASELINE_PATH)
