@@ -20,8 +20,10 @@ EVAL_BASELINE_PATH ?= evals/baselines/faiss_hybrid_rerank.json
 EVAL_DEBUG_LOG_PATH ?= artifacts/evals/rerank_debug.jsonl
 DOCKER_COMPOSE ?= docker compose
 DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
+POSTGRES_DB ?= acme_assistant
+POSTGRES_USER ?= acme
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend backend frontend test eval eval-baseline eval-compare docker-up docker-down docker-logs docker-test local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend backend frontend test eval eval-baseline eval-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare
 
 help:
 	@echo "Available targets:"
@@ -36,6 +38,8 @@ help:
 	@echo "  make eval              Run retrieval evals inside the backend Docker image"
 	@echo "  make eval-baseline     Regenerate the FAISS baseline inside Docker"
 	@echo "  make eval-compare      Compare evals against the baseline inside Docker"
+	@echo "  make docker-migrate    Apply database migrations"
+	@echo "  make docker-db-shell   Open a psql shell in the Postgres container"
 	@echo "  make local-dev         Start local non-Docker dev servers"
 	@echo "  make local-test        Run local non-Docker pytest"
 
@@ -213,3 +217,9 @@ docker-logs:
 
 docker-test:
 	$(DOCKER_COMPOSE) run --rm api python -m pytest
+
+docker-migrate:
+	$(DOCKER_COMPOSE) run --rm migrate
+
+docker-db-shell:
+	$(DOCKER_COMPOSE) exec postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)

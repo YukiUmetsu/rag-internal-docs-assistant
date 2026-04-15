@@ -16,6 +16,7 @@ class Settings:
     app_name: str
     vectorstore_path: str
     chunks_path: str
+    database_url: str | None
     groq_model_name: str | None
     groq_api_key_present: bool
     langsmith_project: str | None
@@ -44,6 +45,7 @@ def get_settings() -> Settings:
         app_name=os.getenv("APP_NAME", "Acme Company Assistant API"),
         vectorstore_path=os.getenv("VECTORSTORE_PATH", "artifacts/faiss_index"),
         chunks_path=os.getenv("CHUNKS_PATH", "artifacts/chunks.jsonl"),
+        database_url=os.getenv("DATABASE_URL"),
         groq_model_name=os.getenv("GROQ_MODEL_NAME"),
         groq_api_key_present=bool(os.getenv("GROQ_API_KEY")),
         langsmith_project=os.getenv("LANGSMITH_PROJECT", "acme-company-assistant-dev")

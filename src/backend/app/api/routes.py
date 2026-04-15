@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from src.backend.app.core.database import check_database_health
 from src.backend.app.core.settings import get_settings, path_exists
 from src.backend.app.schemas.chat import ChatRequest, ChatResponse
 from src.backend.app.schemas.retrieval import HealthResponse, RetrieveRequest, RetrieveResponse
@@ -14,11 +15,15 @@ router = APIRouter(prefix="/api")
 @router.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     settings = get_settings()
+    database_health = check_database_health(settings.database_url)
     return HealthResponse(
         status="ok",
         app_name=settings.app_name,
         vectorstore_available=path_exists(settings.vectorstore_path),
         chunks_available=path_exists(settings.chunks_path),
+        database_available=database_health.database_available,
+        pgvector_available=database_health.pgvector_available,
+        database_error=database_health.error,
         live_llm_configured=bool(settings.groq_model_name and settings.groq_api_key_present),
         groq_model_name=settings.groq_model_name,
         langsmith_tracing_enabled=settings.langsmith_tracing_enabled,

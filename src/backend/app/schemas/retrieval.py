@@ -42,6 +42,9 @@ class HealthResponse(BaseModel):
     app_name: str
     vectorstore_available: bool
     chunks_available: bool
+    database_available: bool
+    pgvector_available: bool
+    database_error: str | None = None
     live_llm_configured: bool
     groq_model_name: str | None
     langsmith_tracing_enabled: bool
