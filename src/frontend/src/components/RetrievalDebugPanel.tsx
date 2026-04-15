@@ -5,6 +5,10 @@ type Props = {
   response: ChatResponse | RetrieveResponse | null;
 };
 
+function formatLatency(milliseconds: number): string {
+  return `${(milliseconds / 1000).toFixed(1)} s`;
+}
+
 export function RetrievalDebugPanel({ response }: Props) {
   const sourceCount = response?.sources.length ?? 0;
 
@@ -13,7 +17,7 @@ export function RetrievalDebugPanel({ response }: Props) {
       <summary>
         <span>Sources</span>
         <small>
-          {response ? `${sourceCount} sources · ${response.latency_ms} ms` : "Run a search"}
+          {response ? `${sourceCount} sources · ${formatLatency(response.latency_ms)}` : "Run a search"}
         </small>
       </summary>
 
