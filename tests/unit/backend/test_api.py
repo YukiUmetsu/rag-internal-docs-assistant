@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -7,6 +8,8 @@ from langchain_core.documents import Document
 
 from src.backend.app.main import app
 from src.backend.app.core.queue import CeleryWorkerHealth, DiagnosticTaskStatus, RedisHealth
+from src.backend.app.core.ingest_jobs import IngestJobDetail, IngestJobSummary
+from src.backend.app.core.uploads import UploadedFileSummary as UploadedFileRecord
 from src.backend.app.schemas.chat import ChatResponse
 from src.backend.app.schemas.retrieval import RetrievalMetadata
 from src.backend.app.services import rag_service
@@ -172,3 +175,122 @@ def test_celery_ping_status_endpoint_serializes_task_state() -> None:
     assert body["task_id"] == "task-123"
     assert body["state"] == "SUCCESS"
     assert body["result"]["status"] == "ok"
+
+
+def test_ingest_job_creation_endpoint_serializes_job() -> None:
+    with patch(
+        "src.backend.app.api.routes.enqueue_validation_ingest_job",
+        return_value=IngestJobDetail(
+            id="job-123",
+            task_id="job-123",
+            source_type="mounted_data",
+            job_mode="validation",
+            status="queued",
+            requested_paths=["data"],
+            uploaded_file_ids=[],
+            result_message=None,
+            error_message=None,
+            created_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+            updated_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+            started_at=None,
+            finished_at=None,
+        ),
+    ):
+        response = client.post(
+            "/api/ingest/jobs",
+            json={"source_type": "mounted_data", "job_mode": "validation", "requested_paths": ["data"]},
+        )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["id"] == "job-123"
+    assert body["status"] == "queued"
+
+
+def test_ingest_jobs_list_endpoint_serializes_jobs() -> None:
+    with patch(
+        "src.backend.app.api.routes.list_ingest_jobs",
+        return_value=[
+            IngestJobSummary(
+                id="job-123",
+                task_id="job-123",
+                source_type="mounted_data",
+                job_mode="validation",
+                status="queued",
+                requested_paths=["data"],
+                uploaded_file_ids=[],
+                result_message=None,
+                error_message=None,
+                created_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+                updated_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+            )
+        ],
+    ):
+        response = client.get("/api/ingest/jobs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body[0]["status"] == "queued"
+
+
+def test_ingest_job_detail_endpoint_serializes_job() -> None:
+    with patch(
+        "src.backend.app.api.routes.get_ingest_job",
+        return_value=IngestJobDetail(
+            id="job-123",
+            task_id="job-123",
+            source_type="mounted_data",
+            job_mode="validation",
+            status="succeeded",
+            requested_paths=["data"],
+            uploaded_file_ids=[],
+            result_message="Validated 1 requested path(s) and 0 uploaded file(s).",
+            error_message=None,
+            created_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+            updated_at=datetime.fromisoformat("2026-04-15T12:00:01+00:00"),
+            started_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+            finished_at=datetime.fromisoformat("2026-04-15T12:00:01+00:00"),
+        ),
+    ):
+        response = client.get("/api/ingest/jobs/job-123")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "succeeded"
+
+
+def test_upload_endpoint_serializes_uploaded_files() -> None:
+    with patch(
+        "src.backend.app.api.routes.store_uploaded_files",
+        return_value=[
+            UploadedFileRecord(
+                id="upload-123",
+                original_filename="notes.md",
+                stored_path="artifacts/uploads/upload-123_notes.md",
+                content_type="text/markdown",
+                file_size_bytes=12,
+                checksum="abc123",
+                created_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+                updated_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+            )
+        ],
+    ):
+        response = client.post(
+            "/api/ingest/uploads",
+            files=[("files", ("notes.md", b"# Notes\n", "text/markdown"))],
+        )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body[0]["original_filename"] == "notes.md"
+    assert body[0]["file_size_bytes"] == 12
+
+
+def test_upload_endpoint_rejects_unsupported_file_types() -> None:
+    response = client.post(
+        "/api/ingest/uploads",
+        files=[("files", ("notes.txt", b"plain text", "text/plain"))],
+    )
+
+    assert response.status_code == 400
+    assert "Unsupported upload file type" in response.json()["detail"]

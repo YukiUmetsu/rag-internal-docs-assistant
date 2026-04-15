@@ -37,7 +37,12 @@ def create_celery_app() -> Celery:
     settings = get_settings()
     broker_url = settings.celery_broker_url or settings.redis_url or "redis://redis:6379/0"
     result_backend = settings.celery_result_backend or settings.redis_url or "redis://redis:6379/1"
-    app = Celery("acme_company_assistant", broker=broker_url, backend=result_backend)
+    app = Celery(
+        "acme_company_assistant",
+        broker=broker_url,
+        backend=result_backend,
+        include=["src.backend.app.core.ingest_jobs"],
+    )
     app.conf.update(
         accept_content=["json"],
         broker_connection_retry_on_startup=True,
