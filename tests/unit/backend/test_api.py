@@ -55,6 +55,25 @@ def test_retrieve_endpoint_serializes_sources() -> None:
     assert body["retrieval"]["detected_year"] == "2025"
 
 
+def test_retrieve_endpoint_still_succeeds_when_history_persistence_fails() -> None:
+    with (
+        patch.object(rag_service, "retrieve", return_value=[make_doc()]),
+        patch.object(rag_service, "persist_search_history", side_effect=RuntimeError("db down")),
+    ):
+        response = client.post(
+            "/api/retrieve",
+            json={
+                "question": "What was the refund window in 2025?",
+                "mode": "retrieve_only",
+                "final_k": 4,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sources"][0]["file_name"] == "refund_policy_2025.md"
+
+
 def test_chat_endpoint_supports_mock_mode() -> None:
     with patch.object(rag_service, "retrieve", return_value=[make_doc()]):
         response = client.post(
