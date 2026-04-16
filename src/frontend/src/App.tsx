@@ -2,12 +2,29 @@ import { useState } from "react";
 
 import { sendChat } from "./api/client";
 import type { ChatResponse, RequestMode } from "./api/types";
+import { AdminDashboardMock } from "./components/AdminDashboardMock";
+import { AdminIngestJobsMock } from "./components/AdminIngestJobsMock";
+import { AdminUploadsMock } from "./components/AdminUploadsMock";
 import { AnswerPanel } from "./components/AnswerPanel";
 import { ChatComposer } from "./components/ChatComposer";
 import { ExamplePrompts } from "./components/ExamplePrompts";
 import { RetrievalDebugPanel } from "./components/RetrievalDebugPanel";
 
 export default function App() {
+  const pathname = window.location.pathname;
+
+  if (pathname.startsWith("/admin/jobs")) {
+    return <AdminIngestJobsMock />;
+  }
+
+  if (pathname.startsWith("/admin/uploads")) {
+    return <AdminUploadsMock />;
+  }
+
+  if (pathname.startsWith("/admin")) {
+    return <AdminDashboardMock />;
+  }
+
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<RequestMode>("mock");
   const [response, setResponse] = useState<ChatResponse | null>(null);
@@ -49,6 +66,12 @@ export default function App() {
           <span>Docs</span>
           <span>Retrieval</span>
           <span>API</span>
+          <a href="/admin" className="nav-link">
+            Admin
+          </a>
+          <a href="/admin/uploads" className="nav-link">
+            Uploads
+          </a>
         </div>
       </nav>
 
