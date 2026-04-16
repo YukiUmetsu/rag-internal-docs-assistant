@@ -11,7 +11,11 @@ from src.rag.debug_log import append_rerank_debug_log
 from src.rag.hybrid_retrieve import keyword_retrieve, merge_retrieval_results
 from src.rag.postgres_retrieve import retrieve_dense_candidates, retrieve_keyword_candidates
 from src.rag.rerank import rerank_candidates
-from src.rag.retriever_backend import RetrieverBackend, resolve_retriever_backend
+from src.rag.retriever_backend import (
+    RetrieverBackend,
+    get_effective_retriever_backend,
+    resolve_retriever_backend,
+)
 from src.rag.vectorstore import load_vectorstore
 from src.backend.app.core.settings import get_settings
 
@@ -94,7 +98,10 @@ def retrieve(
     """
 
     settings = get_settings()
-    backend = resolve_retriever_backend(retriever_backend or settings.retriever_backend)
+    if retriever_backend is not None:
+        backend = resolve_retriever_backend(retriever_backend)
+    else:
+        backend = get_effective_retriever_backend(settings.database_url, settings.retriever_backend)
     query_year = get_single_query_year(query)
 
     # --- Stage 1: Dense retrieval ---

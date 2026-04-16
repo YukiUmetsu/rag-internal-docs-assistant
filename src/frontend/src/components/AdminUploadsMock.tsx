@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
-type UploadItem = {
-  filename: string;
-  size: string;
-  checksum: string;
-  status: string;
-  linkedJob: string;
-  uploadedAt: string;
-  uploadedMinutesAgo: number;
-};
+import { listAdminUploads } from "../api/admin";
+import { PaginationControls } from "./PaginationControls";
+import type {
+  AdminUploadSortKey,
+  AdminUploadStat,
+  SortDirection,
+} from "../api/types";
 
 type UploadMetric = {
   label: string;
@@ -16,131 +14,60 @@ type UploadMetric = {
   detail: string;
 };
 
-const uploadMetrics: UploadMetric[] = [
-  { label: "Uploads this week", value: "24", detail: "7 Markdown, 17 PDF" },
-  { label: "Awaiting ingest", value: "5", detail: "Queued for the next run" },
-  { label: "Avg upload size", value: "1.9 MB", detail: "Below limit" },
-  { label: "Duplicate checksums", value: "2", detail: "Not yet deduped" },
-];
-
-const recentUploads: UploadItem[] = [
-  {
-    filename: "security-handbook.pdf",
-    size: "3.1 MB",
-    checksum: "a29f1c9e7f1d",
-    status: "Ready",
-    linkedJob: "job-44",
-    uploadedAt: "9 min ago",
-    uploadedMinutesAgo: 9,
-  },
-  {
-    filename: "vpn-reset.md",
-    size: "14 KB",
-    checksum: "b41ac3d8e3aa",
-    status: "Ready",
-    linkedJob: "job-44",
-    uploadedAt: "15 min ago",
-    uploadedMinutesAgo: 15,
-  },
-  {
-    filename: "quarterly-policy-update.pdf",
-    size: "1.7 MB",
-    checksum: "d79b8f9e1201",
-    status: "Queued",
-    linkedJob: "job-45",
-    uploadedAt: "31 min ago",
-    uploadedMinutesAgo: 31,
-  },
-  {
-    filename: "benefits-faq.md",
-    size: "22 KB",
-    checksum: "f9a30a118bc1",
-    status: "Ready",
-    linkedJob: "job-45",
-    uploadedAt: "45 min ago",
-    uploadedMinutesAgo: 45,
-  },
-  {
-    filename: "leave-policy-2026.md",
-    size: "26 KB",
-    checksum: "4c7e2b3f1a88",
-    status: "Ready",
-    linkedJob: "job-46",
-    uploadedAt: "1 h ago",
-    uploadedMinutesAgo: 60,
-  },
-  {
-    filename: "incident-runbook.pdf",
-    size: "2.2 MB",
-    checksum: "91a5f8d0b4c2",
-    status: "Queued",
-    linkedJob: "job-46",
-    uploadedAt: "1 h ago",
-    uploadedMinutesAgo: 75,
-  },
-  {
-    filename: "network-ops.md",
-    size: "33 KB",
-    checksum: "7f1c2e9a0d6b",
-    status: "Ready",
-    linkedJob: "job-47",
-    uploadedAt: "2 h ago",
-    uploadedMinutesAgo: 120,
-  },
-  {
-    filename: "release-notes-q2.pdf",
-    size: "4.0 MB",
-    checksum: "0ad7b2e1c9f4",
-    status: "Ready",
-    linkedJob: "job-47",
-    uploadedAt: "2 h ago",
-    uploadedMinutesAgo: 135,
-  },
-  {
-    filename: "payroll-change.md",
-    size: "19 KB",
-    checksum: "8e0b1f3d7c6a",
-    status: "Queued",
-    linkedJob: "job-48",
-    uploadedAt: "3 h ago",
-    uploadedMinutesAgo: 190,
-  },
-  {
-    filename: "oncall-guide.pdf",
-    size: "1.3 MB",
-    checksum: "2f8d9c6e1b44",
-    status: "Ready",
-    linkedJob: "job-48",
-    uploadedAt: "4 h ago",
-    uploadedMinutesAgo: 240,
-  },
-];
-
-const fileTypes = [
-  { label: "Markdown", value: "18" },
-  { label: "PDF", value: "6" },
-  { label: "Waiting ingest", value: "5" },
-];
-
 const PAGE_SIZE = 5;
-const DEFAULT_SORT = { key: "uploadedAt" as SortKey, direction: "desc" as SortDirection };
+const DEFAULT_SORT = { key: "created_at" as AdminUploadSortKey, direction: "desc" as SortDirection };
 
-type SortKey = "filename" | "size" | "status" | "linkedJob" | "uploadedAt";
-type SortDirection = "asc" | "desc";
-
-function statusTone(status: string): "good" | "bad" {
-  return status === "Queued" ? "bad" : "good";
-}
-
-function parseSizeToKb(size: string): number {
-  const match = size.match(/^([\d.]+)\s*(KB|MB)$/i);
-  if (!match) {
-    return 0;
+function formatRelativeTime(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
   }
 
-  const value = Number(match[1]);
-  const unit = match[2].toUpperCase();
-  return unit === "MB" ? value * 1024 : value;
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) {
+    return value;
+  }
+
+  const diffSeconds = Math.round((timestamp - Date.now()) / 1000);
+  const absSeconds = Math.abs(diffSeconds);
+  const direction = diffSeconds < 0 ? "ago" : "from now";
+
+  if (absSeconds < 60) {
+    return `${Math.max(absSeconds, 1)} sec ${direction}`;
+  }
+
+  const diffMinutes = Math.round(absSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min ${direction}`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} h ${direction}`;
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} d ${direction}`;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (bytes >= 1024) {
+    return `${Math.round(bytes / 1024)} KB`;
+  }
+  return `${bytes} B`;
+}
+
+function inferFileType(filename: string): "Markdown" | "PDF" | "Other" {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".md")) {
+    return "Markdown";
+  }
+  if (lower.endsWith(".pdf")) {
+    return "PDF";
+  }
+  return "Other";
 }
 
 function compareValues(a: string | number, b: string | number): number {
@@ -148,34 +75,6 @@ function compareValues(a: string | number, b: string | number): number {
     return a - b;
   }
   return String(a).localeCompare(String(b));
-}
-
-function sortUploads(items: UploadItem[], key: SortKey, direction: SortDirection): UploadItem[] {
-  const multiplier = direction === "asc" ? 1 : -1;
-  return [...items].sort((left, right) => {
-    let leftValue: string | number = left.uploadedMinutesAgo;
-    let rightValue: string | number = right.uploadedMinutesAgo;
-
-    if (key === "filename") {
-      leftValue = left.filename;
-      rightValue = right.filename;
-    } else if (key === "size") {
-      leftValue = parseSizeToKb(left.size);
-      rightValue = parseSizeToKb(right.size);
-    } else if (key === "status") {
-      leftValue = left.status;
-      rightValue = right.status;
-    } else if (key === "linkedJob") {
-      leftValue = left.linkedJob;
-      rightValue = right.linkedJob;
-    }
-
-    return compareValues(leftValue, rightValue) * multiplier;
-  });
-}
-
-function sortDirectionLabel(direction: SortDirection): string {
-  return direction === "asc" ? "ascending" : "descending";
 }
 
 function UploadSortButton({
@@ -194,7 +93,7 @@ function UploadSortButton({
       type="button"
       className={`upload-sort-button${active ? " is-active" : ""}`}
       onClick={onClick}
-      aria-label={`Sort by ${children} ${sortDirectionLabel(direction)}`}
+      aria-label={`Sort by ${children}`}
     >
       <span>{children}</span>
       <small>{active ? (direction === "asc" ? "↑" : "↓") : "↕"}</small>
@@ -202,33 +101,94 @@ function UploadSortButton({
   );
 }
 
+function sortUploads(items: AdminUploadStat[], key: AdminUploadSortKey, direction: SortDirection): AdminUploadStat[] {
+  const multiplier = direction === "asc" ? 1 : -1;
+  return [...items].sort((left, right) => {
+    let leftValue: string | number = left.created_at;
+    let rightValue: string | number = right.created_at;
+
+    if (key === "filename") {
+      leftValue = left.filename;
+      rightValue = right.filename;
+    } else if (key === "size") {
+      leftValue = left.size_bytes;
+      rightValue = right.size_bytes;
+    } else if (key === "checksum") {
+      leftValue = left.checksum;
+      rightValue = right.checksum;
+    } else if (key === "job_id") {
+      leftValue = left.job_id ?? "";
+      rightValue = right.job_id ?? "";
+    }
+
+    return compareValues(leftValue, rightValue) * multiplier;
+  });
+}
+
 export function AdminUploadsMock() {
-  const [sortKey, setSortKey] = useState<SortKey>(DEFAULT_SORT.key);
+  const [uploads, setUploads] = useState<AdminUploadStat[]>([]);
+  const [total, setTotal] = useState(0);
+  const [sortKey, setSortKey] = useState<AdminUploadSortKey>(DEFAULT_SORT.key);
   const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT.direction);
   const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadUploads(nextPage = page, nextSortKey = sortKey, nextSortDirection = sortDirection) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await listAdminUploads({
+        limit: PAGE_SIZE,
+        offset: (nextPage - 1) * PAGE_SIZE,
+        sortBy: nextSortKey,
+        sortDir: nextSortDirection,
+      });
+      setUploads(response.items);
+      setTotal(response.total);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Failed to load uploads.");
+      setUploads([]);
+      setTotal(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    setPage(1);
-  }, [sortKey, sortDirection]);
+    void loadUploads(page, sortKey, sortDirection);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, sortKey, sortDirection]);
 
-  const sortedUploads = useMemo(
-    () => sortUploads(recentUploads, sortKey, sortDirection),
-    [sortKey, sortDirection]
+  const sortedPageUploads = useMemo(
+    () => sortUploads(uploads, sortKey, sortDirection),
+    [uploads, sortKey, sortDirection]
   );
 
-  const totalPages = Math.max(Math.ceil(sortedUploads.length / PAGE_SIZE), 1);
+  const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const currentPage = Math.min(page, totalPages);
-  const pageStart = (currentPage - 1) * PAGE_SIZE;
-  const pagedUploads = sortedUploads.slice(pageStart, pageStart + PAGE_SIZE);
-  const pageEnd = Math.min(pageStart + PAGE_SIZE, sortedUploads.length);
+  const pageStart = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(currentPage * PAGE_SIZE, total);
+  const pageSize = sortedPageUploads.length;
+  const totalBytes = sortedPageUploads.reduce((sum, upload) => sum + upload.size_bytes, 0);
+  const markdownCount = sortedPageUploads.filter((upload) => inferFileType(upload.filename) === "Markdown").length;
+  const pdfCount = sortedPageUploads.filter((upload) => inferFileType(upload.filename) === "PDF").length;
 
-  function toggleSort(key: SortKey) {
+  const uploadMetrics: UploadMetric[] = [
+    { label: "Uploads loaded", value: String(pageSize), detail: `Page ${currentPage} of ${totalPages}` },
+    { label: "Uploads total", value: String(total), detail: "Across all pages" },
+    { label: "Markdown on page", value: String(markdownCount), detail: "MD files in view" },
+    { label: "PDF on page", value: String(pdfCount), detail: "PDF files in view" },
+  ];
+
+  function toggleSort(key: AdminUploadSortKey) {
+    setPage(1);
     setSortKey((currentKey) => {
       if (currentKey === key) {
         setSortDirection((currentDirection) => (currentDirection === "asc" ? "desc" : "asc"));
         return currentKey;
       }
-      setSortDirection(key === "uploadedAt" ? "desc" : "asc");
+      setSortDirection(key === "created_at" ? "desc" : "asc");
       return key;
     });
   }
@@ -252,8 +212,8 @@ export function AdminUploadsMock() {
           <a href="/admin/uploads" className="nav-link is-active">
             Uploads
           </a>
-          <a href="#queue" className="nav-link">
-            Queue
+          <a href="/admin/jobs" className="nav-link">
+            Ingest Jobs
           </a>
         </div>
       </nav>
@@ -329,7 +289,11 @@ export function AdminUploadsMock() {
               </div>
             </div>
             <div className="filetype-list">
-              {fileTypes.map((item) => (
+              {[
+                { label: "Markdown", value: markdownCount.toString() },
+                { label: "PDF", value: pdfCount.toString() },
+                { label: "Current page size", value: formatFileSize(totalBytes) },
+              ].map((item) => (
                 <article className="filetype-row" key={item.label}>
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>
@@ -348,109 +312,89 @@ export function AdminUploadsMock() {
           </div>
           <div className="table-toolbar">
             <p>
-              Showing {pageStart + 1}-{pageEnd} of {sortedUploads.length}
+              Showing {pageStart}-{pageEnd} of {total}
             </p>
-            <div className="pagination-controls" aria-label="Upload pages">
-              <button
-                type="button"
-                onClick={() => setPage((currentPageValue) => Math.max(currentPageValue - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Prev
-              </button>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  type="button"
-                  className={pageNumber === currentPage ? "is-active" : ""}
-                  onClick={() => setPage(pageNumber)}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setPage((currentPageValue) => Math.min(currentPageValue + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              ariaLabel="Upload pages"
+            />
           </div>
-          <div className="table-card">
-            <table className="upload-table">
-              <thead>
-                <tr className="upload-table-head">
-                  <th>
-                    <UploadSortButton
-                      active={sortKey === "filename"}
-                      direction={sortDirection}
-                      onClick={() => toggleSort("filename")}
-                    >
-                      Filename
-                    </UploadSortButton>
-                  </th>
-                  <th>
-                    <UploadSortButton
-                      active={sortKey === "size"}
-                      direction={sortDirection}
-                      onClick={() => toggleSort("size")}
-                    >
-                      Size
-                    </UploadSortButton>
-                  </th>
-                  <th>
-                    <UploadSortButton
-                      active={sortKey === "status"}
-                      direction={sortDirection}
-                      onClick={() => toggleSort("status")}
-                    >
-                      Status
-                    </UploadSortButton>
-                  </th>
-                  <th>
-                    <UploadSortButton
-                      active={sortKey === "linkedJob"}
-                      direction={sortDirection}
-                      onClick={() => toggleSort("linkedJob")}
-                    >
-                      Job
-                    </UploadSortButton>
-                  </th>
-                  <th>
-                    <UploadSortButton
-                      active={sortKey === "uploadedAt"}
-                      direction={sortDirection}
-                      onClick={() => toggleSort("uploadedAt")}
-                    >
-                      Uploaded
-                    </UploadSortButton>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagedUploads.map((upload) => (
-                  <tr key={upload.checksum} className="upload-table-row">
-                    <td>
-                      <strong>{upload.filename}</strong>
-                    </td>
-                    <td>{upload.size}</td>
-                    <td>
-                      <StatusPill label={upload.status} tone={statusTone(upload.status)} />
-                    </td>
-                    <td>{upload.linkedJob}</td>
-                    <td>{upload.uploadedAt}</td>
+
+          {isLoading ? <div className="empty-state">Loading uploads…</div> : null}
+          {error ? <div className="empty-state">{error}</div> : null}
+
+          {!isLoading && !error ? (
+            <div className="table-card">
+              <table className="upload-table">
+                <thead>
+                  <tr className="upload-table-head">
+                    <th>
+                      <UploadSortButton
+                        active={sortKey === "filename"}
+                        direction={sortDirection}
+                        onClick={() => toggleSort("filename")}
+                      >
+                        Filename
+                      </UploadSortButton>
+                    </th>
+                    <th>
+                      <UploadSortButton
+                        active={sortKey === "size"}
+                        direction={sortDirection}
+                        onClick={() => toggleSort("size")}
+                      >
+                        Size
+                      </UploadSortButton>
+                    </th>
+                    <th>
+                      <UploadSortButton
+                        active={sortKey === "checksum"}
+                        direction={sortDirection}
+                        onClick={() => toggleSort("checksum")}
+                      >
+                        Checksum
+                      </UploadSortButton>
+                    </th>
+                    <th>
+                      <UploadSortButton
+                        active={sortKey === "job_id"}
+                        direction={sortDirection}
+                        onClick={() => toggleSort("job_id")}
+                      >
+                        Job
+                      </UploadSortButton>
+                    </th>
+                    <th>
+                      <UploadSortButton
+                        active={sortKey === "created_at"}
+                        direction={sortDirection}
+                        onClick={() => toggleSort("created_at")}
+                      >
+                        Uploaded
+                      </UploadSortButton>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {sortedPageUploads.map((upload) => (
+                    <tr key={upload.id} className="upload-table-row">
+                      <td>
+                        <strong>{upload.filename}</strong>
+                      </td>
+                      <td>{formatFileSize(upload.size_bytes)}</td>
+                      <td>{upload.checksum}</td>
+                      <td>{upload.job_id ?? "pending"}</td>
+                      <td>{formatRelativeTime(upload.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </section>
       </section>
     </main>
   );
-}
-
-function StatusPill({ label, tone }: { label: string; tone: "good" | "bad" }) {
-  return <span className={`status-pill status-pill-${tone}`}>{label}</span>;
 }

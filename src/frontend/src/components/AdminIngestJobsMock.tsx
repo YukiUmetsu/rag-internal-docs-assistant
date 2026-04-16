@@ -1,166 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type JobStatus = "Succeeded" | "Running" | "Queued" | "Failed";
-type JobSource = "mounted_data" | "uploaded_files" | "validation";
-type JobMode = "full" | "partial" | "validation";
+import { getAdminJobDetail, listAdminJobs } from "../api/admin";
+import { PaginationControls } from "./PaginationControls";
+import type {
+  AdminJobSortKey,
+  AdminJobStat,
+  IngestJobDetail,
+  SortDirection,
+} from "../api/types";
+
 type TimeRange = "today" | "7d" | "30d";
-type SortKey = "id" | "source" | "mode" | "status" | "startedAt" | "finishedAt" | "docs" | "chunks";
-type SortDirection = "asc" | "desc";
 
-type IngestJob = {
-  id: string;
-  source: JobSource;
-  mode: JobMode;
-  status: JobStatus;
-  startedAt: string;
-  finishedAt: string;
-  sourceDocuments: number;
-  chunks: number;
-  summary: string;
-  requestedPaths: string[];
-  uploadedFileIds: string[];
-  taskId: string;
-  resultMessage: string;
-  errorMessage: string | null;
+const PAGE_SIZE = 4;
+const TIME_RANGE_DAYS: Record<TimeRange, number> = {
+  today: 1,
+  "7d": 7,
+  "30d": 30,
 };
-
-const jobs: IngestJob[] = [
-  {
-    id: "job-46",
-    source: "mounted_data",
-    mode: "full",
-    status: "Succeeded",
-    startedAt: "8 min ago",
-    finishedAt: "6 min ago",
-    sourceDocuments: 3,
-    chunks: 42,
-    summary: "Mounted corpus refreshed successfully.",
-    requestedPaths: ["data/"],
-    uploadedFileIds: [],
-    taskId: "job-46",
-    resultMessage: "Ingested 3 source document(s), inserted 42 chunk(s).",
-    errorMessage: null,
-  },
-  {
-    id: "job-45",
-    source: "uploaded_files",
-    mode: "partial",
-    status: "Succeeded",
-    startedAt: "32 min ago",
-    finishedAt: "29 min ago",
-    sourceDocuments: 2,
-    chunks: 18,
-    summary: "Uploaded docs were added to the active corpus.",
-    requestedPaths: [],
-    uploadedFileIds: ["upload-18", "upload-19"],
-    taskId: "job-45",
-    resultMessage: "Ingested 2 uploaded file(s), inserted 18 chunk(s).",
-    errorMessage: null,
-  },
-  {
-    id: "job-44",
-    source: "validation",
-    mode: "validation",
-    status: "Succeeded",
-    startedAt: "58 min ago",
-    finishedAt: "57 min ago",
-    sourceDocuments: 0,
-    chunks: 0,
-    summary: "Smoke-tested the ingest queue and worker path.",
-    requestedPaths: ["data/"],
-    uploadedFileIds: [],
-    taskId: "job-44",
-    resultMessage: "Validation completed successfully.",
-    errorMessage: null,
-  },
-  {
-    id: "job-43",
-    source: "mounted_data",
-    mode: "full",
-    status: "Running",
-    startedAt: "9 min ago",
-    finishedAt: "in progress",
-    sourceDocuments: 1,
-    chunks: 12,
-    summary: "Currently ingesting mounted docs.",
-    requestedPaths: ["data/engineering", "data/hr"],
-    uploadedFileIds: [],
-    taskId: "job-43",
-    resultMessage: "Processing source documents in the worker.",
-    errorMessage: null,
-  },
-  {
-    id: "job-42",
-    source: "uploaded_files",
-    mode: "partial",
-    status: "Queued",
-    startedAt: "2 min ago",
-    finishedAt: "pending",
-    sourceDocuments: 0,
-    chunks: 0,
-    summary: "Awaiting worker pickup.",
-    requestedPaths: [],
-    uploadedFileIds: ["upload-17"],
-    taskId: "job-42",
-    resultMessage: "Queued for processing.",
-    errorMessage: null,
-  },
-  {
-    id: "job-41",
-    source: "mounted_data",
-    mode: "full",
-    status: "Succeeded",
-    startedAt: "1 h ago",
-    finishedAt: "1 h ago",
-    sourceDocuments: 4,
-    chunks: 51,
-    summary: "Mounted corpus refreshed after a policy change.",
-    requestedPaths: ["data/"],
-    uploadedFileIds: [],
-    taskId: "job-41",
-    resultMessage: "Ingested 4 source document(s), inserted 51 chunk(s).",
-    errorMessage: null,
-  },
-  {
-    id: "job-40",
-    source: "uploaded_files",
-    mode: "partial",
-    status: "Succeeded",
-    startedAt: "3 h ago",
-    finishedAt: "3 h ago",
-    sourceDocuments: 1,
-    chunks: 7,
-    summary: "Uploaded handbook processed cleanly.",
-    requestedPaths: [],
-    uploadedFileIds: ["upload-15"],
-    taskId: "job-40",
-    resultMessage: "Ingested 1 uploaded file, inserted 7 chunk(s).",
-    errorMessage: null,
-  },
-  {
-    id: "job-39",
-    source: "mounted_data",
-    mode: "full",
-    status: "Failed",
-    startedAt: "6 h ago",
-    finishedAt: "6 h ago",
-    sourceDocuments: 0,
-    chunks: 0,
-    summary: "PDF parse timed out.",
-    requestedPaths: ["data/incidents"],
-    uploadedFileIds: [],
-    taskId: "job-39",
-    resultMessage: "Ingest failed before corpus update.",
-    errorMessage: "PDF parse timed out while reading incident-runbook.pdf",
-  },
-];
-
-const summaryCards = [
-  { label: "Queued jobs", value: "1", detail: "Waiting for worker pickup" },
-  { label: "Running jobs", value: "1", detail: "In flight right now" },
-  { label: "Succeeded today", value: "3", detail: "Clean worker runs" },
-  { label: "Failed today", value: "1", detail: "Needs attention" },
-];
 
 const timeFilters: { key: TimeRange; label: string }[] = [
   { key: "today", label: "Today" },
@@ -168,55 +24,46 @@ const timeFilters: { key: TimeRange; label: string }[] = [
   { key: "30d", label: "30 days" },
 ];
 
-function statusTone(status: JobStatus): "good" | "bad" {
-  if (status === "Failed") {
+function statusTone(status: string): "good" | "bad" | "warn" {
+  if (status === "failed") {
     return "bad";
+  }
+  if (status === "queued") {
+    return "warn";
   }
   return "good";
 }
 
-function compareValues(a: string | number, b: string | number): number {
-  if (typeof a === "number" && typeof b === "number") {
-    return a - b;
+function formatRelativeTime(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
   }
-  return String(a).localeCompare(String(b));
-}
 
-function sortJobs(items: IngestJob[], key: SortKey, direction: SortDirection): IngestJob[] {
-  const multiplier = direction === "asc" ? 1 : -1;
-  return [...items].sort((left, right) => {
-    let leftValue: string | number = left.id;
-    let rightValue: string | number = right.id;
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) {
+    return value;
+  }
 
-    if (key === "source") {
-      leftValue = left.source;
-      rightValue = right.source;
-    } else if (key === "mode") {
-      leftValue = left.mode;
-      rightValue = right.mode;
-    } else if (key === "status") {
-      leftValue = left.status;
-      rightValue = right.status;
-    } else if (key === "startedAt") {
-      leftValue = left.startedAt;
-      rightValue = right.startedAt;
-    } else if (key === "finishedAt") {
-      leftValue = left.finishedAt;
-      rightValue = right.finishedAt;
-    } else if (key === "docs") {
-      leftValue = left.sourceDocuments;
-      rightValue = right.sourceDocuments;
-    } else if (key === "chunks") {
-      leftValue = left.chunks;
-      rightValue = right.chunks;
-    }
+  const diffSeconds = Math.round((timestamp - Date.now()) / 1000);
+  const absSeconds = Math.abs(diffSeconds);
+  const direction = diffSeconds < 0 ? "ago" : "from now";
 
-    return compareValues(leftValue, rightValue) * multiplier;
-  });
-}
+  if (absSeconds < 60) {
+    return `${Math.max(absSeconds, 1)} sec ${direction}`;
+  }
 
-function StatusPill({ label, tone }: { label: string; tone: "good" | "bad" }) {
-  return <span className={`status-pill status-pill-${tone}`}>{label}</span>;
+  const diffMinutes = Math.round(absSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min ${direction}`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} h ${direction}`;
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} d ${direction}`;
 }
 
 function SortButton({
@@ -243,45 +90,144 @@ function SortButton({
   );
 }
 
+function StatusPill({ label, tone }: { label: string; tone: "good" | "bad" | "warn" }) {
+  return <span className={`status-pill status-pill-${tone}`}>{label}</span>;
+}
+
+function sortKeyToApiKey(key: SortKey): AdminJobSortKey {
+  switch (key) {
+    case "source":
+      return "source_type";
+    case "mode":
+      return "job_mode";
+    case "status":
+      return "status";
+    case "startedAt":
+      return "started_at";
+    case "finishedAt":
+      return "finished_at";
+    case "docs":
+      return "source_documents";
+    case "chunks":
+      return "chunks";
+    case "id":
+    default:
+      return "id";
+  }
+}
+
+type SortKey = "id" | "source" | "mode" | "status" | "startedAt" | "finishedAt" | "docs" | "chunks";
+
+type SummaryCard = {
+  label: string;
+  value: string;
+  detail: string;
+};
+
+function summarizeJobs(jobs: AdminJobStat[], total: number): SummaryCard[] {
+  const queued = jobs.filter((job) => job.status === "queued").length;
+  const running = jobs.filter((job) => job.status === "running").length;
+  const failed = jobs.filter((job) => job.status === "failed").length;
+  return [
+    { label: "Jobs in window", value: String(total), detail: "Across the selected period" },
+    { label: "Queued jobs", value: String(queued), detail: "Waiting for worker pickup" },
+    { label: "Running jobs", value: String(running), detail: "In flight right now" },
+    { label: "Failed on page", value: String(failed), detail: "Needs attention" },
+  ];
+}
+
 export function AdminIngestJobsMock() {
+  const [jobs, setJobs] = useState<AdminJobStat[]>([]);
+  const [total, setTotal] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("startedAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [timeRange, setTimeRange] = useState<TimeRange>("7d");
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<IngestJobDetail | null>(null);
   const [page, setPage] = useState(1);
-  const pageSize = 4;
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredJobs = useMemo(() => {
-    if (timeRange === "today") {
-      return jobs.slice(0, 4);
+  async function loadJobs(nextPage = page, nextSortKey = sortKey, nextSortDirection = sortDirection, nextRange = timeRange) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await listAdminJobs({
+        limit: PAGE_SIZE,
+        offset: (nextPage - 1) * PAGE_SIZE,
+        sortBy: sortKeyToApiKey(nextSortKey),
+        sortDir: nextSortDirection,
+        days: TIME_RANGE_DAYS[nextRange],
+      });
+      setJobs(response.items);
+      setTotal(response.total);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Failed to load ingest jobs.");
+      setJobs([]);
+      setTotal(0);
+    } finally {
+      setIsLoading(false);
     }
-    if (timeRange === "7d") {
-      return jobs.slice(0, 6);
+  }
+
+  useEffect(() => {
+    void loadJobs(page, sortKey, sortDirection, timeRange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, sortKey, sortDirection, timeRange]);
+
+  useEffect(() => {
+    if (!selectedJobId) {
+      setSelectedJob(null);
+      return;
     }
-    return jobs;
-  }, [timeRange]);
 
-  const sortedJobs = useMemo(
-    () => sortJobs(filteredJobs, sortKey, sortDirection),
-    [filteredJobs, sortKey, sortDirection]
-  );
+    let cancelled = false;
+    setSelectedJob(null);
+    setIsDetailLoading(true);
+    getAdminJobDetail(selectedJobId)
+      .then((detail) => {
+        if (!cancelled) {
+          setSelectedJob(detail);
+        }
+      })
+      .catch((exc) => {
+        if (!cancelled) {
+          setError(exc instanceof Error ? exc.message : "Failed to load job details.");
+          setSelectedJob(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsDetailLoading(false);
+        }
+      });
 
-  const totalPages = Math.max(1, Math.ceil(sortedJobs.length / pageSize));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedJobId]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pageStart = (currentPage - 1) * pageSize;
-  const visibleJobs = sortedJobs.slice(pageStart, pageStart + pageSize);
+  const pageStart = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = total === 0 ? 0 : Math.min(currentPage * PAGE_SIZE, total);
+  const summaryCards = useMemo(() => summarizeJobs(jobs, total), [jobs, total]);
 
-  const selectedJob = selectedJobId
-    ? sortedJobs.find((job) => job.id === selectedJobId) ?? null
-    : null;
+  function resetSelection() {
+    setSelectedJobId(null);
+    setSelectedJob(null);
+  }
 
   function setTimeRangeAndReset(nextRange: TimeRange) {
     setTimeRange(nextRange);
     setPage(1);
-    setSelectedJobId(null);
+    resetSelection();
   }
 
   function toggleSort(key: SortKey) {
+    setPage(1);
+    resetSelection();
     setSortKey((currentKey) => {
       if (currentKey === key) {
         setSortDirection((currentDirection) => (currentDirection === "asc" ? "desc" : "asc"));
@@ -290,13 +236,11 @@ export function AdminIngestJobsMock() {
       setSortDirection("desc");
       return key;
     });
-    setPage(1);
-    setSelectedJobId(null);
   }
 
   function selectPage(nextPage: number) {
     setPage(nextPage);
-    setSelectedJobId(null);
+    resetSelection();
   }
 
   return (
@@ -330,7 +274,7 @@ export function AdminIngestJobsMock() {
             <p className="section-kicker">Ingest Jobs</p>
             <h1>Worker runs and their outcomes</h1>
             <p className="section-copy">
-              A control-room view for ingest activity: what ran, what’s running, and what needs a
+              A control-room view for ingest activity: what ran, what&apos;s running, and what needs a
               second look.
             </p>
           </div>
@@ -356,7 +300,9 @@ export function AdminIngestJobsMock() {
         </section>
 
         <section className="table-toolbar">
-          <p>Showing {sortedJobs.length} job(s) in the selected window</p>
+          <p>
+            Showing {pageStart}-{pageEnd} of {total}
+          </p>
           <div className="pagination-controls" aria-label="Time range filters">
             {timeFilters.map((filter) => (
               <button
@@ -366,9 +312,9 @@ export function AdminIngestJobsMock() {
                 onClick={() => setTimeRangeAndReset(filter.key)}
               >
                 {filter.label}
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
         </section>
 
         <section className="ingest-jobs-layout">
@@ -379,136 +325,128 @@ export function AdminIngestJobsMock() {
                 <p>Sortable table of the latest worker runs</p>
               </div>
             </div>
-            <div className="table-card">
-              <table className="upload-table ingest-job-table">
-                <thead>
-                  <tr className="upload-table-head">
-                    <th>
-                      <SortButton
-                        active={sortKey === "id"}
-                        direction={sortDirection}
-                        label="Job"
-                        onClick={() => toggleSort("id")}
-                      />
-                    </th>
-                    <th>
-                      <SortButton
-                        active={sortKey === "source"}
-                        direction={sortDirection}
-                        label="Source"
-                        onClick={() => toggleSort("source")}
-                      />
-                    </th>
-                    <th>
-                      <SortButton
-                        active={sortKey === "mode"}
-                        direction={sortDirection}
-                        label="Mode"
-                        onClick={() => toggleSort("mode")}
-                      />
-                    </th>
-                    <th>
-                      <SortButton
-                        active={sortKey === "status"}
-                        direction={sortDirection}
-                        label="Status"
-                        onClick={() => toggleSort("status")}
-                      />
-                    </th>
-                    <th>
-                      <SortButton
-                        active={sortKey === "startedAt"}
-                        direction={sortDirection}
-                        label="Started"
-                        onClick={() => toggleSort("startedAt")}
-                      />
-                    </th>
-                    <th>
-                      <SortButton
-                        active={sortKey === "finishedAt"}
-                        direction={sortDirection}
-                        label="Finished"
-                        onClick={() => toggleSort("finishedAt")}
-                      />
-                    </th>
-                    <th>
-                      <SortButton
-                        active={sortKey === "docs"}
-                        direction={sortDirection}
-                        label="Docs"
-                        onClick={() => toggleSort("docs")}
-                      />
-                    </th>
-                    <th>
-                      <SortButton
-                        active={sortKey === "chunks"}
-                        direction={sortDirection}
-                        label="Chunks"
-                        onClick={() => toggleSort("chunks")}
-                      />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleJobs.map((job) => (
-                    <tr
-                      key={job.id}
-                      className={`upload-table-row${job.id === selectedJob?.id ? " is-selected" : ""}`}
-                      onClick={() => setSelectedJobId(job.id)}
-                    >
-                      <td>
-                        <strong>{job.id}</strong>
-                      </td>
-                      <td>{job.source}</td>
-                      <td>{job.mode}</td>
-                      <td>
-                        <StatusPill label={job.status} tone={statusTone(job.status)} />
-                      </td>
-                      <td>{job.startedAt}</td>
-                      <td>{job.finishedAt}</td>
-                      <td>{job.sourceDocuments}</td>
-                      <td>{job.chunks}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="pagination-footer">
-              <p>
-                Page {currentPage} of {totalPages}
-              </p>
-              <div className="pagination-controls" aria-label="Job table pagination">
-                <button type="button" onClick={() => selectPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
-                  Prev
-                </button>
-                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                  <button
-                    key={pageNumber}
-                    type="button"
-                    className={pageNumber === currentPage ? "is-active" : ""}
-                    onClick={() => selectPage(pageNumber)}
-                  >
-                    {pageNumber}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => selectPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+
+            {isLoading ? <div className="empty-state">Loading jobs…</div> : null}
+            {error ? <div className="empty-state">{error}</div> : null}
+
+            {!isLoading && !error ? (
+              <>
+                <div className="table-card">
+          <table className="upload-table ingest-job-table">
+                    <thead>
+                      <tr className="upload-table-head">
+                        <th>
+                          <SortButton
+                            active={sortKey === "id"}
+                            direction={sortDirection}
+                            label="Job"
+                            onClick={() => toggleSort("id")}
+                          />
+                        </th>
+                        <th>
+                          <SortButton
+                            active={sortKey === "source"}
+                            direction={sortDirection}
+                            label="Source"
+                            onClick={() => toggleSort("source")}
+                          />
+                        </th>
+                        <th>
+                          <SortButton
+                            active={sortKey === "mode"}
+                            direction={sortDirection}
+                            label="Mode"
+                            onClick={() => toggleSort("mode")}
+                          />
+                        </th>
+                        <th>
+                          <SortButton
+                            active={sortKey === "status"}
+                            direction={sortDirection}
+                            label="Status"
+                            onClick={() => toggleSort("status")}
+                          />
+                        </th>
+                        <th>
+                          <SortButton
+                            active={sortKey === "startedAt"}
+                            direction={sortDirection}
+                            label="Started"
+                            onClick={() => toggleSort("startedAt")}
+                          />
+                        </th>
+                        <th>
+                          <SortButton
+                            active={sortKey === "finishedAt"}
+                            direction={sortDirection}
+                            label="Finished"
+                            onClick={() => toggleSort("finishedAt")}
+                          />
+                        </th>
+                        <th>
+                          <SortButton
+                            active={sortKey === "docs"}
+                            direction={sortDirection}
+                            label="Docs"
+                            onClick={() => toggleSort("docs")}
+                          />
+                        </th>
+                        <th>
+                          <SortButton
+                            active={sortKey === "chunks"}
+                            direction={sortDirection}
+                            label="Chunks"
+                            onClick={() => toggleSort("chunks")}
+                          />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {jobs.map((job) => (
+                        <tr
+                          key={job.id}
+                          className={`upload-table-row${job.id === selectedJob?.id ? " is-selected" : ""}`}
+                          onClick={() => setSelectedJobId(job.id)}
+                        >
+                          <td>
+                            <strong>{job.id}</strong>
+                          </td>
+                          <td>{job.source_type}</td>
+                          <td>{job.job_mode}</td>
+                          <td>
+                            <StatusPill label={job.status} tone={statusTone(job.status)} />
+                          </td>
+                          <td>{formatRelativeTime(job.started_at)}</td>
+                          <td>{formatRelativeTime(job.finished_at)}</td>
+                          <td>{job.source_documents}</td>
+                          <td>{job.chunks}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="pagination-footer">
+                  <p>
+                    Page {currentPage} of {totalPages}
+                  </p>
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={selectPage}
+                    ariaLabel="Job table pagination"
+                  />
+                </div>
+              </>
+            ) : null}
           </section>
 
-          {selectedJob ? (
+          {selectedJobId ? (
             <>
               <button
                 type="button"
                 className="ingest-job-backdrop"
                 aria-label="Close selected job details"
-                onClick={() => setSelectedJobId(null)}
+                onClick={() => resetSelection()}
               />
               <aside className="admin-panel ingest-job-drawer">
                 <div className="admin-panel-header ingest-job-drawer-header">
@@ -520,78 +458,76 @@ export function AdminIngestJobsMock() {
                     type="button"
                     className="drawer-close-button"
                     aria-label="Close selected job details"
-                    onClick={() => setSelectedJobId(null)}
+                    onClick={() => resetSelection()}
                   >
                     Close
                   </button>
                 </div>
 
-                <div className="detail-stack">
-                  <section className="detail-card detail-card-status">
-                    <div className="detail-card-header">
-                      <span>{selectedJob.id}</span>
-                      <StatusPill label={selectedJob.status} tone={statusTone(selectedJob.status)} />
-                    </div>
-                    <small>
-                      {selectedJob.source} · {selectedJob.mode} · {selectedJob.startedAt}
-                    </small>
-                  </section>
+                {isDetailLoading ? <div className="empty-state">Loading job details…</div> : null}
 
-                  <section className="detail-card">
-                    <span>Summary</span>
-                    <strong>{selectedJob.summary}</strong>
-                    <p>{selectedJob.resultMessage}</p>
-                  </section>
-
-                  <section className="detail-card">
-                    <span>Inputs</span>
-                    <div className="detail-list">
-                      <div>
-                        <small>Requested paths</small>
-                        <strong>
-                          {selectedJob.requestedPaths.length ? selectedJob.requestedPaths.join(", ") : "None"}
-                        </strong>
+                {selectedJob && !isDetailLoading ? (
+                  <div className="detail-stack">
+                    <section className="detail-card detail-card-status">
+                      <div className="detail-card-header">
+                        <span>{selectedJob.id}</span>
+                        <StatusPill label={selectedJob.status} tone={statusTone(selectedJob.status)} />
                       </div>
-                      <div>
-                        <small>Uploaded file ids</small>
-                        <strong>
-                          {selectedJob.uploadedFileIds.length
-                            ? selectedJob.uploadedFileIds.join(", ")
-                            : "None"}
-                        </strong>
-                      </div>
-                      <div>
-                        <small>Task id</small>
-                        <strong>{selectedJob.taskId}</strong>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="detail-card">
-                    <span>Counts</span>
-                    <div className="detail-metric-row">
-                      <div>
-                        <small>Source docs</small>
-                        <strong>{selectedJob.sourceDocuments}</strong>
-                      </div>
-                      <div>
-                        <small>Chunks</small>
-                        <strong>{selectedJob.chunks}</strong>
-                      </div>
-                      <div>
-                        <small>State</small>
-                        <strong>{selectedJob.status}</strong>
-                      </div>
-                    </div>
-                  </section>
-
-                  {selectedJob.errorMessage ? (
-                    <section className="detail-card detail-card-danger">
-                      <span>Error</span>
-                      <p>{selectedJob.errorMessage}</p>
+                      <small>
+                        {selectedJob.source_type} · {selectedJob.job_mode} ·{" "}
+                        {formatRelativeTime(selectedJob.started_at)}
+                      </small>
                     </section>
-                  ) : null}
-                </div>
+
+                    <section className="detail-card">
+                      <span>Summary</span>
+                      <strong>{selectedJob.result_message ?? selectedJob.error_message ?? "No summary yet."}</strong>
+                      <p>{selectedJob.error_message ?? selectedJob.result_message ?? "No details available."}</p>
+                    </section>
+
+                    <section className="detail-card">
+                      <span>Inputs</span>
+                      <div className="detail-list">
+                        <div>
+                          <small>Requested paths</small>
+                          <strong>
+                            {selectedJob.requested_paths.length ? selectedJob.requested_paths.join(", ") : "None"}
+                          </strong>
+                        </div>
+                        <div>
+                          <small>Uploaded file ids</small>
+                          <strong>
+                            {selectedJob.uploaded_file_ids.length
+                              ? selectedJob.uploaded_file_ids.join(", ")
+                              : "None"}
+                          </strong>
+                        </div>
+                        <div>
+                          <small>Task id</small>
+                          <strong>{selectedJob.task_id ?? "None"}</strong>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="detail-card">
+                      <span>Counts</span>
+                      <div className="detail-metric-row">
+                        <div>
+                          <small>Started</small>
+                          <strong>{formatRelativeTime(selectedJob.started_at)}</strong>
+                        </div>
+                        <div>
+                          <small>Finished</small>
+                          <strong>{formatRelativeTime(selectedJob.finished_at)}</strong>
+                        </div>
+                        <div>
+                          <small>State</small>
+                          <strong>{selectedJob.status}</strong>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                ) : null}
               </aside>
             </>
           ) : null}

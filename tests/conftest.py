@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from src.backend.app.core.settings import get_settings
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TESTS_ROOT = PROJECT_ROOT / "tests"
@@ -29,6 +31,8 @@ def test_env() -> None:
     os.environ.setdefault("EMBEDDING_DIMENSION", "384")
     os.environ.setdefault("RERANK_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
     os.environ.setdefault("VECTORSTORE_PATH", str(TESTS_ROOT / ".tmp" / "default_faiss_index"))
+    os.environ["RETRIEVER_BACKEND"] = "faiss"
+    get_settings.cache_clear()
 
 
 @pytest.fixture

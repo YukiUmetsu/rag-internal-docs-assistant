@@ -635,6 +635,15 @@ button {
   background: #2b3340;
 }
 
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 6px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
 .table-card {
   display: grid;
   gap: 12px;
@@ -882,12 +891,16 @@ button {
   align-items: end;
   gap: 10px;
   min-height: 220px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .bar-chart-item {
   display: grid;
   justify-items: center;
   gap: 8px;
+  min-width: 0;
+  width: 100%;
 }
 
 .bar-chart-track {
@@ -908,12 +921,29 @@ button {
   background: linear-gradient(180deg, #b9d1da 0%, #7aa9b4 100%);
 }
 
-.bar-chart-item strong {
+.bar-chart-caption {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+}
+
+.bar-chart-caption strong,
+.bar-chart-caption small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-chart-caption strong {
   color: var(--text);
   font-size: 0.82rem;
 }
 
-.bar-chart-item small {
+.bar-chart-caption small {
   color: var(--accent);
   font-weight: 800;
 }
@@ -1038,6 +1068,19 @@ button {
 .status-pill-bad {
   color: #2b1010;
   background: #ffb4a8;
+}
+
+.status-pill-warn {
+  color: #362400;
+  background: #ffd58a;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--muted);
 }
 
 .health-grid {
