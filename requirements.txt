@@ -19,5 +19,6 @@ uvicorn
 sqlalchemy
 alembic
 psycopg[binary]
+pgvector
 celery
 redis

@@ -8,6 +8,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 
 from src.backend.app.core.database import check_database_health
+from src.rag.config import get_embedding_dimension, validate_embedding_configuration
 
 
 def test_pgvector_migration_applies_and_extension_exists() -> None:
@@ -33,6 +34,12 @@ def test_pgvector_migration_applies_and_extension_exists() -> None:
         ingest_job_uploads_table = connection.execute(
             text("SELECT to_regclass('public.ingest_job_uploads')")
         ).scalar_one()
+        source_documents_table = connection.execute(
+            text("SELECT to_regclass('public.source_documents')")
+        ).scalar_one()
+        document_chunks_table = connection.execute(
+            text("SELECT to_regclass('public.document_chunks')")
+        ).scalar_one()
         uploaded_filename_index = connection.execute(
             text(
                 """
@@ -44,6 +51,18 @@ def test_pgvector_migration_applies_and_extension_exists() -> None:
                 """
             )
         ).scalar_one()
+        source_document_embedding_type = connection.execute(
+            text(
+                """
+                SELECT format_type(a.atttypid, a.atttypmod)
+                FROM pg_attribute a
+                JOIN pg_class c ON c.oid = a.attrelid
+                WHERE c.relname = 'document_chunks'
+                  AND a.attname = 'embedding'
+                  AND a.attnum > 0
+                """
+            )
+        ).scalar_one()
 
     health = check_database_health(database_url)
 
@@ -51,6 +70,11 @@ def test_pgvector_migration_applies_and_extension_exists() -> None:
     assert schema_stage == "stage_2_postgres_pgvector"
     assert uploaded_files_table == "uploaded_files"
     assert ingest_job_uploads_table == "ingest_job_uploads"
+    assert source_documents_table == "source_documents"
+    assert document_chunks_table == "document_chunks"
     assert uploaded_filename_index == 1
+    assert source_document_embedding_type == "vector(384)"
+    assert get_embedding_dimension() == 384
+    validate_embedding_configuration()
     assert health.database_available is True
     assert health.pgvector_available is True
