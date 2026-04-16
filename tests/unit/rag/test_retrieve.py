@@ -180,3 +180,15 @@ def test_retrieve_does_not_reintroduce_wrong_year_keyword_docs() -> None:
         )
 
     assert [doc.metadata["file_name"] for doc in out] == ["refund_policy_2025.md"]
+
+
+def test_main_passes_final_k_to_retrieve(capsys) -> None:
+    with (
+        patch.object(retrieve_mod, "retrieve", return_value=[]) as retrieve_mock,
+        patch.object(sys, "argv", ["retrieve.py", "--query", "hello", "--k", "7"]),
+    ):
+        retrieve_mod.main()
+
+    retrieve_mock.assert_called_once_with("hello", final_k=7)
+    captured = capsys.readouterr()
+    assert "Retrieved 0 documents." in captured.out

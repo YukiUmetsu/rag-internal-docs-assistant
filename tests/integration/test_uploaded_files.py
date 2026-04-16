@@ -183,6 +183,7 @@ def test_upload_endpoint_is_atomic_for_multi_file_batches(tmp_path: Path) -> Non
         app_name="test",
         vectorstore_path="artifacts/faiss_index",
         chunks_path="artifacts/chunks.jsonl",
+        retriever_backend="faiss",
         uploads_path=str(tmp_path),
         max_upload_file_size_bytes=1,
         database_url=database_url,

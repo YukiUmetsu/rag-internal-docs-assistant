@@ -9,8 +9,11 @@ from langchain_core.documents import Document
 from src.rag.config import get_chunks_path
 from src.rag.debug_log import append_rerank_debug_log
 from src.rag.hybrid_retrieve import keyword_retrieve, merge_retrieval_results
+from src.rag.postgres_retrieve import retrieve_dense_candidates, retrieve_keyword_candidates
 from src.rag.rerank import rerank_candidates
+from src.rag.retriever_backend import RetrieverBackend, resolve_retriever_backend
 from src.rag.vectorstore import load_vectorstore
+from src.backend.app.core.settings import get_settings
 
 
 def get_single_query_year(query: str) -> str | None:
@@ -59,6 +62,7 @@ def retrieve(
     max_chunks_per_source: int = 2,
     vectorstore_path: str | None = None,
     chunks_path: str | None = None,
+    retriever_backend: str | None = None,
     use_hybrid: bool = True,
     use_rerank: bool = True,
     debug_log_path: str | None = None,
@@ -89,38 +93,83 @@ def retrieve(
         List of top-ranked documents
     """
 
-    # --- Load vectorstore ---
-    vectorstore = load_vectorstore(vectorstore_path=vectorstore_path)
+    settings = get_settings()
+    backend = resolve_retriever_backend(retriever_backend or settings.retriever_backend)
     query_year = get_single_query_year(query)
 
     # --- Stage 1: Dense retrieval ---
-    if query_year is None:
-        dense_docs = vectorstore.similarity_search(query, k=initial_k)
-    else:
-        dense_docs = vectorstore.similarity_search(
-            query,
-            k=initial_k,
-            filter={"year": query_year},
-            fetch_k=max(initial_k * 5, 50),
-        )
-        if not dense_docs and not use_hybrid:
+    if backend == RetrieverBackend.FAISS:
+        vectorstore = load_vectorstore(vectorstore_path=vectorstore_path)
+        if query_year is None:
             dense_docs = vectorstore.similarity_search(query, k=initial_k)
+        else:
+            dense_docs = vectorstore.similarity_search(
+                query,
+                k=initial_k,
+                filter={"year": query_year},
+                fetch_k=max(initial_k * 5, 50),
+            )
+            if not dense_docs and not use_hybrid:
+                dense_docs = vectorstore.similarity_search(query, k=initial_k)
+    else:
+        database_url = settings.database_url
+        if not database_url:
+            raise RuntimeError("DATABASE_URL is not configured")
+        dense_docs = retrieve_dense_candidates(
+            database_url,
+            query,
+            initial_k=initial_k,
+            query_year=query_year,
+        )
+        if query_year is not None and not dense_docs and not use_hybrid:
+            dense_docs = retrieve_dense_candidates(
+                database_url,
+                query,
+                initial_k=initial_k,
+                query_year=None,
+            )
 
     candidates: List[Document] = list(dense_docs)
 
     # --- Stage 2: Hybrid retrieval (optional) ---
     if use_hybrid:
         keyword_fetch_k = initial_k * 4 if query_year is not None else initial_k
-        raw_keyword_docs = keyword_retrieve(
-            query=query,
-            chunks_path=chunks_path or get_chunks_path(),
-            k=keyword_fetch_k,
-        )
-        keyword_docs = filter_docs_by_year(raw_keyword_docs, query_year)
-        if query_year is not None and not dense_docs and not keyword_docs:
-            dense_docs = vectorstore.similarity_search(query, k=initial_k)
-            keyword_docs = raw_keyword_docs
-        keyword_docs = keyword_docs[:initial_k]
+        if backend == RetrieverBackend.FAISS:
+            raw_keyword_docs = keyword_retrieve(
+                query=query,
+                chunks_path=chunks_path or get_chunks_path(),
+                k=keyword_fetch_k,
+            )
+            keyword_docs = filter_docs_by_year(raw_keyword_docs, query_year)
+            if query_year is not None and not dense_docs and not keyword_docs:
+                vectorstore = load_vectorstore(vectorstore_path=vectorstore_path)
+                dense_docs = vectorstore.similarity_search(query, k=initial_k)
+                keyword_docs = raw_keyword_docs
+            keyword_docs = keyword_docs[:initial_k]
+        else:
+            database_url = settings.database_url
+            if not database_url:
+                raise RuntimeError("DATABASE_URL is not configured")
+            raw_keyword_docs = retrieve_keyword_candidates(
+                database_url,
+                query,
+                initial_k=keyword_fetch_k,
+                query_year=query_year,
+            )
+            keyword_docs = raw_keyword_docs[:initial_k]
+            if query_year is not None and not dense_docs and not keyword_docs:
+                dense_docs = retrieve_dense_candidates(
+                    database_url,
+                    query,
+                    initial_k=initial_k,
+                    query_year=None,
+                )
+                keyword_docs = retrieve_keyword_candidates(
+                    database_url,
+                    query,
+                    initial_k=initial_k,
+                    query_year=None,
+                )
 
         candidates = merge_retrieval_results(
             dense_docs=dense_docs,
@@ -179,7 +228,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    docs = retrieve(args.query, k=args.k)
+    docs = retrieve(args.query, final_k=args.k)
 
     print(f"Retrieved {len(docs)} documents.\n")
 

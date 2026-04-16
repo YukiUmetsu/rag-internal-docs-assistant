@@ -16,6 +16,7 @@ class Settings:
     app_name: str
     vectorstore_path: str
     chunks_path: str
+    retriever_backend: str
     uploads_path: str
     max_upload_file_size_bytes: int
     database_url: str | None
@@ -50,6 +51,7 @@ def get_settings() -> Settings:
         app_name=os.getenv("APP_NAME", "Acme Company Assistant API"),
         vectorstore_path=os.getenv("VECTORSTORE_PATH", "artifacts/faiss_index"),
         chunks_path=os.getenv("CHUNKS_PATH", "artifacts/chunks.jsonl"),
+        retriever_backend=os.getenv("RETRIEVER_BACKEND", "faiss"),
         uploads_path=os.getenv("UPLOADS_PATH", "artifacts/uploads"),
         max_upload_file_size_bytes=int(os.getenv("MAX_UPLOAD_FILE_SIZE_BYTES", str(100 * 1024 * 1024))),
         database_url=os.getenv("DATABASE_URL"),
