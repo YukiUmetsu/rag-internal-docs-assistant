@@ -23,6 +23,27 @@ make local-test
 
 The default Makefile targets use Docker.
 
+### Switching the retriever locally
+
+The app can read from either FAISS or Postgres/pgvector. Switch it with:
+
+```bash
+make retriever-faiss
+make retriever-postgres
+```
+
+These commands update `RETRIEVER_BACKEND` in `.env` and restart the API and
+worker containers so the new retriever takes effect right away. `make
+retriever-postgres` also checks whether the active Postgres corpus is empty by
+default, and if it is, it runs the mounted-document ingest pipeline for you.
+
+Use `faiss` if you want the original file-based retriever. Use `postgres` if
+you want the database-backed retriever that reads from `source_documents` and
+`document_chunks`.
+
+For quality checks, the Postgres path is the one exercised by `make docker-eval`.
+The FAISS path remains the fallback and the baseline reference point.
+
 ---
 
 ## Web Demo

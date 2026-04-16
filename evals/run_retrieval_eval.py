@@ -70,6 +70,7 @@ def evaluate_mode(
     mode_name: str,
     vectorstore_path: str,
     chunks_path: str,
+    retriever_backend: str | None,
     use_hybrid: bool,
     use_rerank: bool,
     final_k: int = 4,
@@ -112,6 +113,7 @@ def evaluate_mode(
             max_chunks_per_source=max_chunks_per_source,
             vectorstore_path=vectorstore_path,
             chunks_path=chunks_path,
+            retriever_backend=retriever_backend,
             use_hybrid=use_hybrid,
             use_rerank=use_rerank,
             debug_log_path=debug_log_path,
@@ -336,6 +338,12 @@ def main() -> None:
     parser.add_argument("--gold-path", default="evals/retrieval_gold.yaml")
     parser.add_argument("--vectorstore-path", default="artifacts/faiss_index")
     parser.add_argument("--chunks-path", default="artifacts/chunks.jsonl")
+    parser.add_argument(
+        "--retriever-backend",
+        choices=["faiss", "postgres"],
+        default=None,
+        help="Override the retriever backend used for evaluation.",
+    )
     parser.add_argument("--output-path", default="evals/retrieval_eval_results.json")
     parser.add_argument("--final-k", type=int, default=3)
     parser.add_argument("--initial-k", type=int, default=8)
@@ -383,6 +391,7 @@ def main() -> None:
             mode_name=mode_name,
             vectorstore_path=args.vectorstore_path,
             chunks_path=args.chunks_path,
+            retriever_backend=args.retriever_backend,
             use_hybrid=config["use_hybrid"],
             use_rerank=config["use_rerank"],
             final_k=args.final_k,
