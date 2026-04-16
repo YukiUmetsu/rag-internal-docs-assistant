@@ -63,6 +63,15 @@ def test_pgvector_migration_applies_and_extension_exists() -> None:
                 """
             )
         ).scalar_one()
+        uploaded_file_fk_delete_action = connection.execute(
+            text(
+                """
+                SELECT confdeltype
+                FROM pg_constraint
+                WHERE conname = 'source_documents_uploaded_file_id_fkey'
+                """
+            )
+        ).scalar_one()
 
     health = check_database_health(database_url)
 
@@ -74,6 +83,7 @@ def test_pgvector_migration_applies_and_extension_exists() -> None:
     assert document_chunks_table == "document_chunks"
     assert uploaded_filename_index == 1
     assert source_document_embedding_type == "vector(384)"
+    assert uploaded_file_fk_delete_action == "r"
     assert get_embedding_dimension() == 384
     validate_embedding_configuration()
     assert health.database_available is True

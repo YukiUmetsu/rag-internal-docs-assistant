@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column(
             "uploaded_file_id",
             sa.String(length=36),
-            sa.ForeignKey("uploaded_files.id", ondelete="SET NULL"),
+            sa.ForeignKey("uploaded_files.id", ondelete="CASCADE"),
             nullable=True,
         ),
         sa.Column("source_path", sa.Text(), nullable=True),
@@ -78,14 +78,14 @@ def upgrade() -> None:
         "source_documents",
         ["uploaded_file_id"],
         unique=True,
-        postgresql_where=sa.text("uploaded_file_id IS NOT NULL"),
+        postgresql_where=sa.text("uploaded_file_id IS NOT NULL AND is_active = true"),
     )
     op.create_index(
         "uq_source_documents_source_path",
         "source_documents",
         ["source_path"],
         unique=True,
-        postgresql_where=sa.text("source_path IS NOT NULL"),
+        postgresql_where=sa.text("source_path IS NOT NULL AND is_active = true"),
     )
 
     op.create_table(

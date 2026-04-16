@@ -1,39 +1,19 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-from typing import List
 
 from langchain_core.documents import Document
 
 from src.rag.chunk_store import save_chunks
 from src.rag.config import get_chunks_path
 from src.rag.chunking import split_documents
-from src.rag.loader import load_all_documents, load_markdown, load_pdf
+from src.rag.document_sources import load_documents_from_paths
+from src.rag.loader import load_all_documents
 from src.rag.vectorstore import build_vectorstore, load_vectorstore, save_vectorstore
 
 
-def load_documents_from_paths(paths: List[str]) -> List[Document]:
-    docs: List[Document] = []
-
-    for raw_path in paths:
-        path = Path(raw_path)
-
-        if not path.exists() or not path.is_file():
-            raise FileNotFoundError(f"Path does not exist or is not a file: {path}")
-
-        if path.suffix == ".md":
-            docs.extend(load_markdown(path))
-        elif path.suffix == ".pdf":
-            docs.extend(load_pdf(path))
-        else:
-            print(f"Skipping unsupported file type: {path}")
-
-    return docs
-
-
 def run_full_update_from_paths(
-    paths: List[str],
+    paths: list[str],
     vectorstore_path: str | None = None,
     chunks_path: str | None = None,
 ) -> None:
@@ -66,7 +46,7 @@ def run_full_update() -> None:
 
 
 def run_partial_update(
-    paths: List[str],
+    paths: list[str],
     vectorstore_path: str | None = None,
     chunks_path: str | None = None,
 ) -> None:

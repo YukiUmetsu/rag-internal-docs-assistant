@@ -12,6 +12,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.backend.app.core.queue import celery_app
+from src.backend.app.core.corpus import (
+    collect_prepared_sources,
+    persist_prepared_sources,
+)
 from src.backend.app.core.uploads import (
     get_uploaded_file,
     _insert_ingest_job_upload_links,
@@ -203,14 +207,39 @@ def enqueue_validation_ingest_job(
     requested_paths: list[str],
     uploaded_file_ids: list[str] | None = None,
 ) -> IngestJobDetail:
+    normalized_paths = _normalize_paths(requested_paths)
+    normalized_uploaded_file_ids = _normalize_ids(uploaded_file_ids or [])
+    _ensure_requested_inputs(normalized_paths, normalized_uploaded_file_ids)
     job = create_ingest_job(
         database_url,
         source_type=source_type,
         job_mode=job_mode,
-        requested_paths=requested_paths,
-        uploaded_file_ids=uploaded_file_ids,
+        requested_paths=normalized_paths,
+        uploaded_file_ids=normalized_uploaded_file_ids,
     )
     validation_ingest_job.apply_async(args=[job.id], task_id=job.id)
+    return get_ingest_job(database_url, job.id)
+
+
+def enqueue_document_ingest_job(
+    database_url: str | None,
+    *,
+    source_type: str,
+    job_mode: str,
+    requested_paths: list[str],
+    uploaded_file_ids: list[str] | None = None,
+) -> IngestJobDetail:
+    normalized_paths = _normalize_paths(requested_paths)
+    normalized_uploaded_file_ids = _normalize_ids(uploaded_file_ids or [])
+    _ensure_requested_inputs(normalized_paths, normalized_uploaded_file_ids)
+    job = create_ingest_job(
+        database_url,
+        source_type=source_type,
+        job_mode=job_mode,
+        requested_paths=normalized_paths,
+        uploaded_file_ids=normalized_uploaded_file_ids,
+    )
+    document_ingest_job.apply_async(args=[job.id], task_id=job.id)
     return get_ingest_job(database_url, job.id)
 
 
@@ -221,6 +250,8 @@ def validation_ingest_job(job_id: str) -> dict[str, Any]:
         raise RuntimeError("DATABASE_URL is not configured")
 
     mark_ingest_job_started(settings.database_url, job_id)
+    # Keep a brief visible running state so async job transitions are easy to
+    # observe in tests and in the UI while this remains a validation-only task.
     time.sleep(1.0)
 
     job = get_ingest_job(settings.database_url, job_id)
@@ -256,6 +287,57 @@ def validation_ingest_job(job_id: str) -> dict[str, Any]:
         "result_message": result_message,
         "validated_paths": normalized_paths,
         "validated_uploaded_file_ids": uploaded_file_ids,
+    }
+
+
+@celery_app.task(name="ingest_jobs.document_ingest")
+def document_ingest_job(job_id: str) -> dict[str, Any]:
+    settings = get_settings()
+    if not settings.database_url:
+        raise RuntimeError("DATABASE_URL is not configured")
+
+    mark_ingest_job_started(settings.database_url, job_id)
+    job = get_ingest_job(settings.database_url, job_id)
+
+    try:
+        prepared_sources = collect_prepared_sources(
+            settings.database_url,
+            requested_paths=job.requested_paths,
+            uploaded_file_ids=job.uploaded_file_ids,
+            ingest_job_id=job_id,
+        )
+        if not prepared_sources:
+            raise ValueError("No ingest sources were provided.")
+
+        result = persist_prepared_sources(
+            settings.database_url,
+            ingest_job_id=job_id,
+            prepared_sources=prepared_sources,
+            full_refresh=job.job_mode == "full",
+        )
+    except Exception as exc:
+        error_message = f"{type(exc).__name__}: {exc}"
+        mark_ingest_job_failed(settings.database_url, job_id, error_message)
+        raise
+
+    result_message = (
+        "Ingested "
+        f"{result.source_documents_inserted} source document(s), "
+        f"{result.chunks_inserted} chunk(s), "
+        f"skipped {result.source_documents_skipped} unchanged source document(s)."
+    )
+    if result.source_documents_replaced:
+        result_message += f" Replaced {result.source_documents_replaced} stale source document(s)."
+
+    mark_ingest_job_succeeded(settings.database_url, job_id, result_message)
+    return {
+        "job_id": job_id,
+        "status": "succeeded",
+        "result_message": result_message,
+        "source_documents_inserted": result.source_documents_inserted,
+        "source_documents_replaced": result.source_documents_replaced,
+        "source_documents_skipped": result.source_documents_skipped,
+        "chunks_inserted": result.chunks_inserted,
     }
 
 
@@ -343,9 +425,11 @@ def _detail_from_row(row: Any) -> IngestJobDetail:
 
 
 def _normalize_paths(requested_paths: list[str]) -> list[str]:
-    normalized = [path.strip() for path in requested_paths if path and path.strip()]
-    if not normalized:
-        raise ValueError("At least one requested path is required")
+    normalized: list[str] = []
+    for path in requested_paths:
+        value = str(path).strip()
+        if value and value not in normalized:
+            normalized.append(value)
     return normalized
 
 
@@ -383,3 +467,9 @@ def _normalize_ids(uploaded_file_ids: list[str]) -> list[str]:
 def _ensure_uploaded_files_exist(database_url: str, uploaded_file_ids: list[str]) -> None:
     for upload_id in uploaded_file_ids:
         get_uploaded_file(database_url, upload_id)
+
+
+def _ensure_requested_inputs(requested_paths: list[str], uploaded_file_ids: list[str]) -> None:
+    if requested_paths or uploaded_file_ids:
+        return
+    raise ValueError("At least one requested path or uploaded file is required")

@@ -23,7 +23,7 @@ DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
 POSTGRES_DB ?= acme_assistant
 POSTGRES_USER ?= acme
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs docker-ingest docker-verify-corpus local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare
 
 help:
 	@echo "Available targets:"
@@ -42,6 +42,8 @@ help:
 	@echo "  make docker-migrate    Apply database migrations"
 	@echo "  make docker-db-shell   Open a psql shell in the Postgres container"
 	@echo "  make docker-worker-logs Follow Docker worker logs"
+	@echo "  make docker-ingest     Run a full corpus ingest inside Docker"
+	@echo "  make docker-verify-corpus Verify active corpus integrity inside Docker"
 	@echo "  make local-dev         Start local non-Docker dev servers"
 	@echo "  make local-test        Run local non-Docker pytest"
 
@@ -232,3 +234,9 @@ docker-db-shell:
 	$(DOCKER_COMPOSE) exec postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
 
 docker-worker-logs: logs-worker
+
+docker-ingest:
+	$(DOCKER_API_RUN) python -m src.backend.app.scripts.run_document_ingest --wait --job-mode full --source-type mounted_data --requested-paths data
+
+docker-verify-corpus:
+	$(DOCKER_API_RUN) python -m src.backend.app.scripts.verify_corpus

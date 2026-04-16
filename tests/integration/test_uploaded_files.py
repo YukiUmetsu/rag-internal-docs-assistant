@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from hashlib import sha256
 import os
 import time
-from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -10,6 +10,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import IntegrityError
 
 from src.backend.app.core.settings import Settings
 from src.backend.app.main import app
@@ -85,9 +86,9 @@ def test_ingest_job_can_reference_uploaded_files() -> None:
     job_response = client.post(
         "/api/ingest/jobs",
         json={
-            "source_type": "mounted_data",
-            "job_mode": "validation",
-            "requested_paths": ["data"],
+            "source_type": "uploaded_files",
+            "job_mode": "full",
+            "requested_paths": [],
             "uploaded_file_ids": [upload_id],
         },
     )
@@ -107,7 +108,71 @@ def test_ingest_job_can_reference_uploaded_files() -> None:
 
     assert latest["status"] == "succeeded"
     assert latest["uploaded_file_ids"] == [upload_id]
-    assert "uploaded file(s)" in latest["result_message"]
+    assert "Ingested" in latest["result_message"]
+
+    database_url = os.getenv("DATABASE_URL")
+    assert database_url is not None
+    engine = create_engine(database_url, pool_pre_ping=True)
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                """
+                SELECT
+                    document_chunks.chunk_metadata->>'file_name' AS file_name,
+                    document_chunks.chunk_metadata->>'canonical_doc_id' AS canonical_doc_id,
+                    document_chunks.chunk_metadata->>'uploaded_file_id' AS uploaded_file_id,
+                    document_chunks.chunk_metadata->>'domain' AS domain
+                FROM document_chunks
+                JOIN source_documents
+                    ON source_documents.id = document_chunks.source_document_id
+                WHERE source_documents.ingest_job_id = :job_id
+                ORDER BY document_chunks.chunk_index
+                LIMIT 1
+                """
+            ),
+            {"job_id": job["id"]},
+        ).mappings().one()
+
+    assert row["file_name"] == "linked.md"
+    assert row["canonical_doc_id"] == "linked"
+    assert row["uploaded_file_id"] == upload_id
+    assert row["domain"] is None
+
+    with pytest.raises(IntegrityError):
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    DELETE FROM ingest_job_uploads
+                    WHERE ingest_job_id = :job_id
+                      AND uploaded_file_id = :upload_id
+                    """
+                ),
+                {"job_id": job["id"], "upload_id": upload_id},
+            )
+            connection.execute(
+                text(
+                    """
+                    DELETE FROM uploaded_files
+                    WHERE id = :upload_id
+                    """
+                ),
+                {"upload_id": upload_id},
+            )
+
+    with engine.connect() as connection:
+        still_present = connection.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM uploaded_files
+                WHERE id = :upload_id
+                """
+            ),
+            {"upload_id": upload_id},
+        ).scalar_one()
+
+    assert still_present == 1
 
 
 def test_upload_endpoint_is_atomic_for_multi_file_batches(tmp_path: Path) -> None:

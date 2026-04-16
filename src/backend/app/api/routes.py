@@ -4,6 +4,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from src.backend.app.core.database import check_database_health
 from src.backend.app.core.ingest_jobs import (
+    enqueue_document_ingest_job,
     enqueue_validation_ingest_job,
     get_ingest_job,
     list_ingest_jobs,
@@ -113,18 +114,29 @@ def get_celery_ping_status(task_id: str) -> CeleryDiagnosticStatusResponse:
 def create_ingest_job(request: IngestJobCreateRequest) -> IngestJobDetail:
     settings = get_settings()
     try:
-        job = enqueue_validation_ingest_job(
-            settings.database_url,
-            source_type=request.source_type,
-            job_mode=request.job_mode,
-            requested_paths=request.requested_paths,
-            uploaded_file_ids=request.uploaded_file_ids,
-        )
+        if request.job_mode == "validation":
+            job = enqueue_validation_ingest_job(
+                settings.database_url,
+                source_type=request.source_type,
+                job_mode=request.job_mode,
+                requested_paths=request.requested_paths,
+                uploaded_file_ids=request.uploaded_file_ids,
+            )
+        else:
+            job = enqueue_document_ingest_job(
+                settings.database_url,
+                source_type=request.source_type,
+                job_mode=request.job_mode,
+                requested_paths=request.requested_paths,
+                uploaded_file_ids=request.uploaded_file_ids,
+            )
         return IngestJobDetail(**job.__dict__)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Uploaded file not found") from exc
-    except (RuntimeError, ValueError) as exc:
+    except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/ingest/uploads", response_model=list[UploadedFileSummary], status_code=201)

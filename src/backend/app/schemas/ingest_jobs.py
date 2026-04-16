@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 
 
 class IngestJobCreateRequest(BaseModel):
-    source_type: Literal["mounted_data"] = "mounted_data"
-    job_mode: Literal["validation"] = "validation"
-    requested_paths: list[str] = Field(default_factory=lambda: ["data"], min_length=1)
+    source_type: Literal["mounted_data", "uploaded_files", "mixed"] = "mounted_data"
+    job_mode: Literal["validation", "full", "partial"] = "validation"
+    requested_paths: list[str] = Field(default_factory=list)
     uploaded_file_ids: list[str] = Field(default_factory=list)
 
 
