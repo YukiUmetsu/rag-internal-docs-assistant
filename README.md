@@ -44,6 +44,29 @@ you want the database-backed retriever that reads from `source_documents` and
 For quality checks, the Postgres path is the one exercised by `make docker-eval`.
 The FAISS path remains the fallback and the baseline reference point.
 
+### Production-like Docker profile
+
+When you want the stack to behave more like a deployment and less like a live
+development workspace, use the production-like Compose profile:
+
+```bash
+make docker-prod-up
+make docker-prod-logs
+make docker-prod-down
+```
+
+This profile:
+
+- runs the API and worker without reload
+- serves the frontend from built assets instead of the Vite dev server
+- avoids bind-mounting the repo source into the runtime containers
+- keeps persistent Docker volumes for uploads and corpus artifacts
+- defaults the retriever to Postgres unless you override `RETRIEVER_BACKEND`
+
+The frontend is published on `http://localhost:4173` in this profile.
+Use `make docker-prod-test` to validate the Compose configuration before
+starting it.
+
 ---
 
 ## Web Demo

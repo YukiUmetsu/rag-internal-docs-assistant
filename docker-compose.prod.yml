@@ -1,0 +1,36 @@
+services:
+  migrate:
+    command: alembic upgrade head
+    volumes: []
+
+  api:
+    command: >
+      python -m uvicorn src.backend.app.main:app
+      --host 0.0.0.0
+      --port 8000
+    volumes:
+      - backend-artifacts:/app/artifacts
+      - backend-hf-cache:/root/.cache/huggingface
+    environment:
+      RETRIEVER_BACKEND: ${RETRIEVER_BACKEND:-postgres}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+
+  worker:
+    command: celery -A src.backend.app.core.queue:celery_app worker --loglevel=info
+    volumes:
+      - backend-artifacts:/app/artifacts
+      - backend-hf-cache:/root/.cache/huggingface
+
+  frontend:
+    command: >
+      sh -c "npm run build && npm run preview -- --host 0.0.0.0 --port 4173"
+    ports:
+      - "4173:4173"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    volumes: []
+    depends_on:
+      - api
+
+volumes:
+  backend-artifacts:

@@ -19,11 +19,12 @@ EVAL_OUTPUT_PATH ?= artifacts/evals/retrieval_eval_results.json
 EVAL_BASELINE_PATH ?= evals/baselines/faiss_hybrid_rerank.json
 EVAL_DEBUG_LOG_PATH ?= artifacts/evals/rerank_debug.jsonl
 DOCKER_COMPOSE ?= docker compose
+DOCKER_COMPOSE_PROD ?= docker compose -f docker-compose.yml -f docker-compose.prod.yml
 DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
 POSTGRES_DB ?= acme_assistant
 POSTGRES_USER ?= acme
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare eval-postgres eval-postgres-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs docker-ingest docker-verify-corpus docker-eval retriever-faiss retriever-postgres local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare local-eval-postgres local-eval-postgres-compare
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare eval-postgres eval-postgres-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs docker-ingest docker-verify-corpus docker-eval docker-prod-up docker-prod-down docker-prod-logs docker-prod-test retriever-faiss retriever-postgres local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare local-eval-postgres local-eval-postgres-compare
 
 help:
 	@echo "Available targets:"
@@ -46,6 +47,10 @@ help:
 	@echo "  make docker-worker-logs Follow Docker worker logs"
 	@echo "  make docker-ingest     Run a full corpus ingest inside Docker"
 	@echo "  make docker-verify-corpus Verify active corpus integrity inside Docker"
+	@echo "  make docker-prod-up    Start the production-like Docker profile"
+	@echo "  make docker-prod-down  Stop the production-like Docker profile"
+	@echo "  make docker-prod-logs  Follow production-like Docker logs"
+	@echo "  make docker-prod-test  Validate the production-like Docker config"
 	@echo "  make retriever-faiss    Switch Docker to the FAISS retriever"
 	@echo "  make retriever-postgres Switch Docker to the Postgres retriever"
 	@echo "  make local-dev         Start local non-Docker dev servers"
@@ -296,6 +301,18 @@ docker-verify-corpus:
 	$(DOCKER_API_RUN) python -m src.backend.app.scripts.verify_corpus
 
 docker-eval: eval-postgres-compare
+
+docker-prod-up:
+	$(DOCKER_COMPOSE_PROD) up --build -d
+
+docker-prod-down:
+	$(DOCKER_COMPOSE_PROD) down
+
+docker-prod-logs:
+	$(DOCKER_COMPOSE_PROD) logs -f api worker frontend
+
+docker-prod-test:
+	$(DOCKER_COMPOSE_PROD) config --quiet
 
 define switch_retriever
 	@grep -q '^RETRIEVER_BACKEND=' .env && \
