@@ -2,9 +2,9 @@ import { useState } from "react";
 
 import { sendChat } from "./api/client";
 import type { ChatResponse, RequestMode } from "./api/types";
-import { AdminDashboardMock } from "./components/AdminDashboardMock";
-import { AdminIngestJobsMock } from "./components/AdminIngestJobsMock";
-import { AdminUploadsMock } from "./components/AdminUploadsMock";
+import { AdminDashboard } from "./components/AdminDashboard";
+import { AdminIngestJobs } from "./components/AdminIngestJobs";
+import { AdminUploads } from "./components/AdminUploads";
 import { AnswerPanel } from "./components/AnswerPanel";
 import { ChatComposer } from "./components/ChatComposer";
 import { ExamplePrompts } from "./components/ExamplePrompts";
@@ -14,15 +14,15 @@ export default function App() {
   const pathname = window.location.pathname;
 
   if (pathname.startsWith("/admin/jobs")) {
-    return <AdminIngestJobsMock />;
+    return <AdminIngestJobs />;
   }
 
   if (pathname.startsWith("/admin/uploads")) {
-    return <AdminUploadsMock />;
+    return <AdminUploads />;
   }
 
   if (pathname.startsWith("/admin")) {
-    return <AdminDashboardMock />;
+    return <AdminDashboard />;
   }
 
   const [question, setQuestion] = useState("");

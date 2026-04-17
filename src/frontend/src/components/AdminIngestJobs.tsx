@@ -136,7 +136,7 @@ function summarizeJobs(jobs: AdminJobStat[], total: number): SummaryCard[] {
   ];
 }
 
-export function AdminIngestJobsMock() {
+export function AdminIngestJobs() {
   const [jobs, setJobs] = useState<AdminJobStat[]>([]);
   const [total, setTotal] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("startedAt");
@@ -277,15 +277,6 @@ export function AdminIngestJobsMock() {
               A control-room view for ingest activity: what ran, what&apos;s running, and what needs a
               second look.
             </p>
-          </div>
-          <div className="admin-hero-actions">
-            <button type="button">Run full ingest</button>
-            <button type="button" className="secondary-action">
-              Run partial ingest
-            </button>
-            <button type="button" className="secondary-action">
-              Retry failed job
-            </button>
           </div>
         </header>
 

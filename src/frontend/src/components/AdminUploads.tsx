@@ -125,7 +125,7 @@ function sortUploads(items: AdminUploadStat[], key: AdminUploadSortKey, directio
   });
 }
 
-export function AdminUploadsMock() {
+export function AdminUploads() {
   const [uploads, setUploads] = useState<AdminUploadStat[]>([]);
   const [total, setTotal] = useState(0);
   const [sortKey, setSortKey] = useState<AdminUploadSortKey>(DEFAULT_SORT.key);
@@ -228,15 +228,6 @@ export function AdminUploadsMock() {
               processed.
             </p>
           </div>
-          <div className="admin-hero-actions">
-            <button type="button">Browse files</button>
-            <button type="button" className="secondary-action">
-              Upload now
-            </button>
-            <button type="button" className="secondary-action">
-              Run ingest
-            </button>
-          </div>
         </header>
 
         <section className="upload-primary-row">
@@ -250,14 +241,9 @@ export function AdminUploadsMock() {
             <div className="upload-dropzone">
               <div className="upload-dropzone-inner">
                 <strong>Drag and drop files</strong>
-                <span>or use the browse button to pick local documents</span>
+                <span>or drop local documents into this area</span>
               </div>
-              <div className="upload-dropzone-actions">
-                <button type="button">Choose files</button>
-                <button type="button" className="secondary-action">
-                  Paste paths
-                </button>
-              </div>
+              <p className="upload-dropzone-note">Uploaded files appear in the table below once they land.</p>
             </div>
           </section>
         </section>

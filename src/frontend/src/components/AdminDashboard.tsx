@@ -131,7 +131,7 @@ function backendLabel(backend: RetrieverBackend): string {
   return backend === "postgres" ? "Postgres" : "FAISS";
 }
 
-export function AdminDashboardMock() {
+export function AdminDashboard() {
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
