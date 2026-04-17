@@ -3,7 +3,7 @@
 
 A Retrieval-Augmented Generation (RAG) system that answers questions using internal company documents across engineering, support, HR, and operations.
 
-This project simulates a realistic company knowledge assistant with versioned documents, mixed formats (Markdown + PDF), and evaluation-driven development.
+Designed to simulate a production internal knowledge assistant with versioned documents, mixed formats (Markdown + PDF), and evaluation-driven development.
 
 ![Demo](./assets/search-demo.gif)
 
@@ -36,9 +36,9 @@ flowchart LR
 
 ## Results
 
-- Retrieval quality is checked against a committed FAISS baseline.
-- The Postgres retriever matches the FAISS baseline on the current retrieval eval gate.
-- The admin dashboard surfaces live corpus, ingest, and usage metrics instead of static demo data.
+- Achieved parity with the committed FAISS baseline on the retrieval eval gate
+- Current retrieval metrics: `MRR = 1.000`, `Top-1 accuracy = 1.000`
+- Admin UI surfaces live corpus, ingestion, and usage metrics
 
 ## Retry and Idempotency
 
@@ -146,7 +146,7 @@ instead of local Docker volumes.
 
 ---
 
-## Web Demo
+## Local Demo
 
 Run the Dockerized app:
 
@@ -160,11 +160,7 @@ Open `http://localhost:5173` and try:
 - "How many PTO days do employees get?"
 - "When is manager approval required for refunds?"
 
-The UI supports live generation, mock safe mode, and retrieval-only inspection. Mock mode is useful for demos when Groq quota is unavailable.
-
-### Docker Web Demo
-
-The Dockerized web demo now includes the full app stack:
+The local demo includes:
 
 - API
 - frontend
@@ -172,11 +168,8 @@ The Dockerized web demo now includes the full app stack:
 - Redis
 - Celery worker
 
-```bash
-make dev
-```
-
-Open `http://localhost:5173`. The frontend calls the backend at `http://localhost:8000`.
+The UI supports live generation, mock safe mode, and retrieval-only inspection.
+Mock mode is useful for demos when Groq quota is unavailable.
 
 Useful Docker commands:
 
@@ -187,7 +180,8 @@ make test
 make stop
 ```
 
-The dev compose stack bind-mounts the repo, including `data/` and `artifacts/`, so it uses the same FAISS index and chunk files as local development.
+The dev compose stack bind-mounts the repo, including `data/` and `artifacts/`,
+so it uses the same FAISS index and chunk files as local development.
 
 ### LangSmith Observability
 
@@ -227,123 +221,17 @@ The deeper architecture, ingestion, evaluation, and production notes live in
 
 ---
 
-## 🚀 Future Improvements
+## Production & Scaling
 
-The current stack is local-first, but it can scale cleanly into cloud infrastructure.
+See [docs/production.md](docs/production.md) for the full deployment and scaling
+story.
 
-### Reference cloud stack
+Highlights:
 
-If we moved this into a production cloud environment, I would keep the same
-application contract and swap the plumbing underneath it:
-
-- queue transport: Amazon SQS, Google Pub/Sub, or Azure Service Bus
-- workflow/orchestration layer: Temporal, AWS Step Functions, or Google Cloud
-  Workflows
-- worker autoscaling: cloud-native autoscaling based on queue depth and CPU
-- durable job state: Postgres with explicit status transitions and attempt
-  history
-
-The API would still create a job row first, then publish work. The worker would
-claim the job, update state to `running`, process the document, and finish with
-`succeeded` or `failed`. The difference is that the queue and workflow engine
-become managed services, while Postgres remains the source of truth for the UI
-and audit trail.
-
-### Worker scaling, retries, and status tracking
-
-For long-running ingest work, the cleanest pattern is:
-
-- keep a job record in Postgres with `queued`, `running`, `succeeded`, and
-  `failed`
-- store `attempt_count`, `last_error`, `started_at`, `finished_at`, and an
-  external execution id
-- use workflow-level retries for transient failures
-- use a dead-letter queue or failed execution bucket for poisoned jobs
-- keep the job id stable, and treat each worker attempt as just one execution
-  of that job
-
-Temporal is a strong fit when we want durable workflows with resumable state and
-explicit retries. Step Functions and Cloud Workflows are also good when the
-workflow is mostly an orchestrated series of cloud calls and we want managed
-retry/backoff behavior without running the orchestration layer ourselves.
-
-### Scale keyword and vector search independently
-
-The search path should be able to grow without changing the product contract:
-
-- keep Postgres full-text search for keyword matches while it remains cheap and
-  fast
-- keep pgvector in Postgres while the corpus and latency targets are moderate
-- split the serving path from the ingest path when query volume grows
-- keep the merge and rerank logic stable so the retrieval behavior does not
-  change even if the backing stores do
-
-If the corpus eventually outgrows a single Postgres deployment, the next step is
-to separate the keyword and vector read paths so each can scale and cache
-independently.
-
-If Postgres itself becomes the bottleneck because it is carrying both keyword
-and vector search, I would split it further:
-
-- keep Postgres for job state, uploads, and document metadata
-- move keyword search to a dedicated search engine, for example OpenSearch
-  or Elasticsearch
-- move vector search to a dedicated vector service, for example Pinecone or
-  Weaviate
-- keep the ingest pipeline responsible for writing both indexes
-- keep the retrieval contract stable so the application still merges and reranks
-  results the same way
-
-### Improve observability
-
-For production observability, I would add OpenTelemetry first and keep the rest
-of the stack simple:
-
-- OpenTelemetry instrumentation in the API, worker, and retriever
-- OpenTelemetry Collector to receive and export telemetry
-- a metrics backend for dashboards and alerts
-- a log backend for application and worker logs
-- a trace backend for request and job tracing
-
-The most useful signals for this app are:
-
-- ingest duration
-- queue depth
-- retry count
-- failure rate by job type
-- retrieval latency
-- top queries by volume
-- corpus health counts
-- backend selection and fallback rate
-
-I would also keep structured logs with `job_id`, `query_id`, backend, latency,
-status, and error text so traces and logs can be correlated quickly when a job
-misbehaves. Alerts should cover failed ingests, missing corpus data, latency
-regressions, and queue backlog.
-
-LangSmith remains useful for retrieval debugging, but production observability
-should also cover queue health and system-level SLOs.
-
----
-
-## 📌 Goals
-
-This project demonstrates:
-
-- RAG system design
-- real-world data challenges
-- evaluation and iteration
-- production-oriented thinking
-
----
-
-## 🤝 Inspiration
-
-Inspired by real-world internal knowledge assistants used in:
-
-- engineering teams
-- support operations
-- HR systems
+- queue-based ingestion with retries and dead-letter handling
+- worker scaling and job status tracking
+- splitting keyword and vector search when Postgres becomes the bottleneck
+- OpenTelemetry-based observability
 
 ---
 
@@ -367,11 +255,3 @@ Short version:
 - [Production & Scaling](docs/production.md)
 
 ---
-
-## 🧠 Author Notes
-
-This project focuses on **quality over quantity**, emphasizing:
-
-- realistic data
-- controlled complexity
-- explainable system behavior
