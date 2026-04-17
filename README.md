@@ -18,11 +18,12 @@ This project simulates a realistic company knowledge assistant with versioned do
 ```mermaid
 flowchart LR
   UI[React Frontend] --> API[FastAPI API]
-  API --> RETR[Retriever]
+  API -->|search request| RETR[Retriever]
+  API -->|ingest request| INGEST[Ingest API]
   RETR -->|FAISS| FAISS[(FAISS index + chunks)]
   RETR -->|pgvector| PG[(Postgres + pgvector)]
-  API --> DB[(Postgres metadata)]
-  API --> Redis[(Redis queue)]
+  INGEST --> DB[(Postgres metadata)]
+  INGEST --> Redis[(Redis queue)]
   Redis --> Worker[Celery Worker]
   Worker --> DB
   Worker --> PG
@@ -35,6 +36,32 @@ flowchart LR
 - Retrieval quality is checked against a committed FAISS baseline.
 - The Postgres retriever matches the FAISS baseline on the current retrieval eval gate.
 - The admin dashboard surfaces live corpus, ingest, and usage metrics instead of static demo data.
+
+## Retry and Idempotency
+
+If the same ingest runs more than once, the corpus should not end up with
+duplicate documents.
+
+- each upload and ingest job is recorded in Postgres
+- unchanged documents are skipped
+- if a document changes, the old active version is marked inactive and the new
+  version becomes active
+- the original upload and job history stays available for debugging
+
+These two tables do different jobs:
+
+- `uploaded_files` = the file we received
+- `source_documents` = the searchable document version we created from it
+
+That is why the upload can stay in history even when a new document version
+replaces the old active one.
+
+That keeps re-runs safe and makes the corpus easier to trust. In a larger cloud
+setup, I would put retry/backoff rules in the workflow or queue layer and send
+jobs that keep failing into a dead-letter path. In practice, that means the
+queue or workflow retries a job a few times with backoff, and if it still
+fails, the message is moved aside for later inspection instead of blocking the
+main queue.
 
 ---
 
@@ -92,12 +119,27 @@ This profile:
 - runs the API and worker without reload
 - serves the frontend from built assets instead of the Vite dev server
 - avoids bind-mounting the repo source into the runtime containers
-- keeps persistent Docker volumes for uploads and corpus artifacts
+- keeps persistent Docker volumes for uploads and corpus artifacts in the local
+  demo
 - defaults the retriever to Postgres unless you override `RETRIEVER_BACKEND`
 
 The frontend is published on `http://localhost:4173` in this profile.
 Use `make docker-prod-test` to validate the Compose configuration before
 starting it.
+
+Before shipping to production, I would also add authentication and
+authorization so the admin pages and ingest endpoints are not open by default.
+In practice, that usually means SSO or OIDC for people, plus role checks for
+admin actions.
+
+For a real deployment, the same containers can run on ECS/Fargate or Cloud Run.
+In that setup, I would run migrations as a release step or one-off job before
+the API starts serving traffic, and I would store uploads in object storage
+instead of local Docker volumes.
+
+- upload storage: Amazon S3, Google Cloud Storage, or Cloudflare R2
+- database: Postgres for metadata, job state, and document indexes
+- app runtime: ECS/Fargate or Cloud Run for the API and worker services
 
 ---
 
