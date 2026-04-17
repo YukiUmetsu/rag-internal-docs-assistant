@@ -4,6 +4,38 @@ A production-style Retrieval-Augmented Generation (RAG) system that answers ques
 
 This project simulates a realistic company knowledge assistant with versioned documents, mixed formats (Markdown + PDF), and evaluation-driven development.
 
+## Project Highlights
+
+- Postgres/pgvector retrieval with FAISS fallback and a one-command local switch.
+- Async ingestion with Redis + Celery for mounted docs and uploaded files.
+- Eval-gated retriever parity against a committed FAISS baseline.
+- Admin UI for uploads, ingest jobs, documents, search history, and corpus health.
+- Docker dev and production-like profiles for consistent local and deployment-style runs.
+- Backend and frontend tests for upload, ingest, retrieval, and admin workflows.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  UI[React Frontend] --> API[FastAPI API]
+  API --> RETR[Retriever]
+  RETR -->|FAISS| FAISS[(FAISS index + chunks)]
+  RETR -->|pgvector| PG[(Postgres + pgvector)]
+  API --> DB[(Postgres metadata)]
+  API --> Redis[(Redis queue)]
+  Redis --> Worker[Celery Worker]
+  Worker --> DB
+  Worker --> PG
+  Worker --> Artifacts[(Uploads + corpus artifacts)]
+  Eval[Retrieval Eval] --> RETR
+```
+
+## Results
+
+- Retrieval quality is checked against a committed FAISS baseline.
+- The Postgres retriever matches the FAISS baseline on the current retrieval eval gate.
+- The admin dashboard surfaces live corpus, ingest, and usage metrics instead of static demo data.
+
 ---
 
 ## Development setup
@@ -87,7 +119,13 @@ The UI supports live generation, mock safe mode, and retrieval-only inspection. 
 
 ### Docker Web Demo
 
-Stage 1 Docker support runs the existing FAISS-backed app only. It does not add Postgres, Redis, Celery, or pgvector yet.
+The Dockerized web demo now includes the full app stack:
+
+- API
+- frontend
+- Postgres with pgvector
+- Redis
+- Celery worker
 
 ```bash
 make dev
@@ -304,10 +342,100 @@ The dataset is intentionally small but high-quality to:
 
 ## 🚀 Future Improvements
 
-- Add LangSmith evaluation pipeline
-- Add semantic caching (Redis)
-- Introduce agentic workflows (LangGraph)
-- Add multi-turn conversation support
+The current stack is local-first, but it can scale cleanly into cloud infrastructure.
+
+### Reference cloud stack
+
+If we moved this into a production cloud environment, I would keep the same
+application contract and swap the plumbing underneath it:
+
+- queue transport: Amazon SQS, Google Pub/Sub, or Azure Service Bus
+- workflow/orchestration layer: Temporal, AWS Step Functions, or Google Cloud
+  Workflows
+- worker autoscaling: cloud-native autoscaling based on queue depth and CPU
+- durable job state: Postgres with explicit status transitions and attempt
+  history
+
+The API would still create a job row first, then publish work. The worker would
+claim the job, update state to `running`, process the document, and finish with
+`succeeded` or `failed`. The difference is that the queue and workflow engine
+become managed services, while Postgres remains the source of truth for the UI
+and audit trail.
+
+### Worker scaling, retries, and status tracking
+
+For long-running ingest work, the cleanest pattern is:
+
+- keep a job record in Postgres with `queued`, `running`, `succeeded`, and
+  `failed`
+- store `attempt_count`, `last_error`, `started_at`, `finished_at`, and an
+  external execution id
+- use workflow-level retries for transient failures
+- use a dead-letter queue or failed execution bucket for poisoned jobs
+- keep the job id stable, and treat each worker attempt as just one execution
+  of that job
+
+Temporal is a strong fit when we want durable workflows with resumable state and
+explicit retries. Step Functions and Cloud Workflows are also good when the
+workflow is mostly an orchestrated series of cloud calls and we want managed
+retry/backoff behavior without running the orchestration layer ourselves.
+
+### Scale keyword and vector search independently
+
+The search path should be able to grow without changing the product contract:
+
+- keep Postgres full-text search for keyword matches while it remains cheap and
+  fast
+- keep pgvector in Postgres while the corpus and latency targets are moderate
+- split the serving path from the ingest path when query volume grows
+- keep the merge and rerank logic stable so the retrieval behavior does not
+  change even if the backing stores do
+
+If the corpus eventually outgrows a single Postgres deployment, the next step is
+to separate the keyword and vector read paths so each can scale and cache
+independently.
+
+If Postgres itself becomes the bottleneck because it is carrying both keyword
+and vector search, I would split it further:
+
+- keep Postgres for job state, uploads, and document metadata
+- move keyword search to a dedicated search engine, for example OpenSearch
+  or Elasticsearch
+- move vector search to a dedicated vector service, for example Pinecone or
+  Weaviate
+- keep the ingest pipeline responsible for writing both indexes
+- keep the retrieval contract stable so the application still merges and reranks
+  results the same way
+
+### Improve observability
+
+For production observability, I would add OpenTelemetry first and keep the rest
+of the stack simple:
+
+- OpenTelemetry instrumentation in the API, worker, and retriever
+- OpenTelemetry Collector to receive and export telemetry
+- a metrics backend for dashboards and alerts
+- a log backend for application and worker logs
+- a trace backend for request and job tracing
+
+The most useful signals for this app are:
+
+- ingest duration
+- queue depth
+- retry count
+- failure rate by job type
+- retrieval latency
+- top queries by volume
+- corpus health counts
+- backend selection and fallback rate
+
+I would also keep structured logs with `job_id`, `query_id`, backend, latency,
+status, and error text so traces and logs can be correlated quickly when a job
+misbehaves. Alerts should cover failed ingests, missing corpus data, latency
+regressions, and queue backlog.
+
+LangSmith remains useful for retrieval debugging, but production observability
+should also cover queue health and system-level SLOs.
 
 ---
 
