@@ -1,8 +1,11 @@
 # RAG Internal Docs Assistant
+![CI](https://github.com/YukiUmetsu/rag-internal-docs-assistant/actions/workflows/ci.yml/badge.svg)
 
-A production-style Retrieval-Augmented Generation (RAG) system that answers questions using internal company documents across engineering, support, HR, and operations.
+A Retrieval-Augmented Generation (RAG) system that answers questions using internal company documents across engineering, support, HR, and operations.
 
 This project simulates a realistic company knowledge assistant with versioned documents, mixed formats (Markdown + PDF), and evaluation-driven development.
+
+![Demo](./assets/search-demo.gif)
 
 ## Project Highlights
 
@@ -504,15 +507,24 @@ Inspired by real-world internal knowledge assistants used in:
 
 ## Evaluation Story
 
-(1) Dense retrieval was already strong, and hybrid retrieval was neutral on the initial dataset. Reranking improved exact-term and some ambiguous cases, but it still regressed version-sensitive ranking. The remaining issue appears to be that semantic reranking still over-prefers newer or semantically similar documents when the query requires an exact historical version.
+The detailed evaluation write-up lives in [docs/evaluation.md](docs/evaluation.md).
 
-(2) I observed that duplicate document formats (PDF vs Markdown) were dominating top retrieval results in some cases. I introduced canonical document grouping to collapse near-duplicates and improve result diversity, which improved version-sensitive retrieval performance.
+Short version:
 
-(3) I replaced the simple dense-first hybrid merge with Reciprocal Rank Fusion (RRF), so dense and keyword retrieval could both influence candidate order. This improved the hybrid retrieval baseline, but reranking still exposed a specific weakness: when the query named an exact year, semantically similar documents from the wrong year could still outrank the correct historical policy.
+- hybrid retrieval improved once dense and keyword results were merged with
+  RRF
+- canonical document grouping reduced near-duplicate noise
+- a single-year metadata filter fixed the version/year failure mode
+- the current `hybrid_rerank` gate reaches 1.000 MRR and 1.000 top-1 accuracy
 
-(4) I added an explicit single-year metadata filter before reranking. When a query contains exactly one year, retrieval first constrains candidates to documents with matching `year` metadata, while multi-year comparison queries remain unfiltered. This resolved the version/year failure mode: on the current 11-query retrieval eval, `hybrid_rerank` improved to 1.000 MRR and 1.000 top-1 accuracy across latest-policy, exact-term, ambiguous, version-sensitive, and exact-year categories.
+## Learn More
 
---
+- [Architecture](docs/architecture.md)
+- [Ingestion & Idempotency](docs/ingestion.md)
+- [Evaluation Details](docs/evaluation.md)
+- [Production & Scaling](docs/production.md)
+
+---
 
 ## 🧠 Author Notes
 
