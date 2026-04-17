@@ -14,6 +14,19 @@ The initial hybrid retriever was decent, but it was not yet strong enough on:
 - year-sensitive policy questions
 - near-duplicate document formats
 
+## Query categories
+
+The gold set covers the kinds of questions people usually ask in an internal
+assistant:
+
+- policy questions
+- engineering questions
+- incident questions
+- HR questions
+
+These categories matter because they force the retriever to handle both exact
+terms and broader semantic matches.
+
 ## Why RRF helped
 
 I replaced a simple dense-first merge with Reciprocal Rank Fusion (RRF).

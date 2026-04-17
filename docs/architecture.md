@@ -94,3 +94,20 @@ The important split is:
 
 That separation makes it easier to keep provenance, versioning, and search
 state clean.
+
+## Corpus shape
+
+The corpus is intentionally mixed so the retriever has to deal with the kinds of
+content internal tools usually see:
+
+- multiple business domains
+- versioned policy documents
+- Markdown and PDF formats
+- duplicate content across formats
+
+That mix matters because it creates realistic retrieval problems:
+
+- choosing the right version
+- handling near-duplicate sources
+- dealing with noisy PDF extraction
+- keeping the active corpus clean over time

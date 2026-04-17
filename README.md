@@ -204,184 +204,26 @@ These fields are intended to support later LangSmith datasets and evaluators for
 
 ---
 
-## 🚀 Overview
-
-This system allows users to ask natural language questions such as:
-
-- "What is the refund policy?"
-- "How do we handle failed payments?"
-- "What should we do during a payment failure incident?"
-- "How many PTO days do employees get?"
-
-The system retrieves relevant internal documents and generates grounded answers with citations.
-
----
-
-## 🧠 Key Features
-
-### 1. Multi-Domain Knowledge Base
-Includes realistic internal documents from multiple domains:
-
-- Engineering (payment systems)
-- Support (playbooks)
-- Policies (refund rules)
-- HR (PTO policies)
-- Incidents (runbooks)
-
----
-
-### 2. Versioned Documents (Real-World Ambiguity)
-
-Simulates real company scenarios with multiple versions:
-
-- `refund_policy_2025.md`
-- `refund_policy_2026.md`
-
-Subtle differences force the system to choose the correct version.
-
----
-
-### 3. Mixed Document Formats
-
-Supports:
-
-- Markdown (structured)
-- PDF (semi-structured, noisy)
-
-Example:
-- `refund_policy_2026.md`
-- `refund_policy_2026.pdf`
-
-This introduces:
-- formatting inconsistencies
-- duplicate content
-- parsing challenges
-
----
-
-### 4. Realistic Failure Scenarios
-
-The dataset intentionally includes:
-
-- conflicting policies
-- duplicate content across formats
-- noisy PDF extraction
-- ambiguous queries
-
-This allows evaluation of real-world RAG failure modes.
-
----
-
-### 5. Evaluation-Driven Development
-
-The system is designed to evaluate:
-
-- correctness
-- groundedness
-- relevance
-- retrieval quality
-
-Using structured evaluation datasets.
-
----
-
-### 6. Full-Stack Demo
-
-The repo includes a React + FastAPI demo app:
-
-- clean assistant interface
-- source citations
-- retrieval debug panel
-- live/mock/retrieval-only modes
-- backend health and artifact status
-
----
-
-### 7. Retrieval
-
-- Query → embedding
-- Retrieve top-k relevant chunks
-- Apply filtering and ranking
-
----
-
-### 8. Generation
-
-- LLM generates answer using retrieved context
-- Includes grounding in source documents
-
----
-
-### 9. (Optional) Corrective RAG
-
-- Detect weak retrieval
-- Rewrite query
-- Retry retrieval
-
----
-
-## 🧪 Example Queries
-
-### Policy Questions
-
-- "What is the refund window?"
-- "Do refunds over $1000 require approval?"
-
-### Engineering Questions
-
-- "How does the payment flow work?"
-- "What are common payment errors?"
-
-### Incident Questions
-
-- "How do we debug a spike in payment failures?"
-- "What is a SEV1 incident?"
-
-### HR Questions
-
-- "How many PTO days do employees get?"
-- "Is jury duty paid?"
-
----
-
-## ⚠️ Known Challenges (Intentional)
-
-This project includes real-world challenges:
-
-- outdated vs current documents
-- duplicate content across formats
-- semantic variations in wording
-- noisy PDF extraction
-- multi-domain ambiguity
-
----
-
-## 🎯 Design Decisions
-
-### Why Markdown + PDF?
-
-To simulate real-world document ecosystems:
-- clean structured docs
-- messy exported documents
-- duplicate knowledge sources
-
----
-
-### Why Versioned Documents?
-
-To test:
-- retrieval accuracy
-- ability to prefer newer policies
-- handling conflicting information
-
----
-
-### Why Limited Dataset?
-
-The dataset is intentionally small but high-quality to:
-- isolate failure modes
-- enable clear evaluation
-- avoid unnecessary complexity
+## What This Project Demonstrates
+
+- Production-oriented RAG architecture with API, worker, queue, and database
+- Async ingestion and job lifecycle design
+- Retrieval evaluation with MRR and top-1 accuracy
+- Handling versioned documents and duplicate sources
+- A clear path from local containers to cloud deployment
+
+## Current Limitations
+
+- No authentication or multi-tenant isolation yet
+- Local file storage is still used in the demo
+- The search stack is designed for moderate scale, not huge corpus sizes
+- Autoscaling is not part of the local demo environment
+
+The deeper architecture, ingestion, evaluation, and production notes live in
+[docs/architecture.md](docs/architecture.md),
+[docs/ingestion.md](docs/ingestion.md),
+[docs/evaluation.md](docs/evaluation.md), and
+[docs/production.md](docs/production.md).
 
 ---
 
