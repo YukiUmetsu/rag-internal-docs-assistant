@@ -1,4 +1,4 @@
-import { requestJson } from "./request";
+import { requestFormData, requestJson } from "./request";
 import type {
   AdminDashboardResponse,
   AdminJobSortKey,
@@ -10,6 +10,7 @@ import type {
   RetrieverBackend,
   SortDirection,
   IngestJobDetail,
+  UploadedFileSummary,
 } from "./types";
 
 type AdminJobsQuery = {
@@ -66,6 +67,16 @@ export function listAdminUploads(
     sort_dir: query.sortDir,
   });
   return requestJson<AdminPaginatedResponse<AdminUploadStat>>(`/api/admin/uploads${queryString}`);
+}
+
+export function uploadAdminFiles(files: File[]): Promise<UploadedFileSummary[]> {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("files", file);
+  }
+  return requestFormData<UploadedFileSummary[]>("/api/ingest/uploads", formData, {
+    method: "POST",
+  });
 }
 
 export function listAdminJobs(query: AdminJobsQuery): Promise<AdminPaginatedResponse<AdminJobStat>> {

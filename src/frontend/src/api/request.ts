@@ -16,3 +16,21 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
 
   return response.json() as Promise<T>;
 }
+
+export async function requestFormData<T>(
+  path: string,
+  formData: FormData,
+  init?: RequestInit
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}

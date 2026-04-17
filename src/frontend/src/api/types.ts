@@ -114,6 +114,17 @@ export type AdminUploadStat = {
   created_at: string;
 };
 
+export type UploadedFileSummary = {
+  id: string;
+  original_filename: string;
+  stored_path: string;
+  content_type: string | null;
+  file_size_bytes: number;
+  checksum: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AdminHealthFlag = {
   label: string;
   value: string;

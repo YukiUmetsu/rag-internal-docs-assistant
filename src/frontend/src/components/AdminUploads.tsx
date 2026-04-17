@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
-import { listAdminUploads } from "../api/admin";
+import { listAdminUploads, uploadAdminFiles } from "../api/admin";
 import { PaginationControls } from "./PaginationControls";
 import type {
   AdminUploadSortKey,
@@ -77,6 +77,11 @@ function compareValues(a: string | number, b: string | number): number {
   return String(a).localeCompare(String(b));
 }
 
+function isSupportedUploadFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  return name.endsWith(".md") || name.endsWith(".pdf");
+}
+
 function UploadSortButton({
   active,
   children,
@@ -131,8 +136,14 @@ export function AdminUploads() {
   const [sortKey, setSortKey] = useState<AdminUploadSortKey>(DEFAULT_SORT.key);
   const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT.direction);
   const [page, setPage] = useState(1);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function loadUploads(nextPage = page, nextSortKey = sortKey, nextSortDirection = sortDirection) {
     setIsLoading(true);
@@ -152,6 +163,67 @@ export function AdminUploads() {
       setTotal(0);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  function focusFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function resetSelection({ preserveStatus = false }: { preserveStatus?: boolean } = {}) {
+    setSelectedFiles([]);
+    if (!preserveStatus) {
+      setUploadStatus(null);
+    }
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function normalizeSelectedFiles(files: File[]): File[] {
+    const supported = files.filter(isSupportedUploadFile);
+    const rejected = files.filter((file) => !isSupportedUploadFile(file));
+    if (rejected.length) {
+      setUploadError(`Ignored unsupported files: ${rejected.map((file) => file.name).join(", ")}`);
+    } else {
+      setUploadError(null);
+    }
+    return supported;
+  }
+
+  function handleFileSelection(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    setUploadStatus(null);
+    setSelectedFiles(normalizeSelectedFiles(files));
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    setUploadStatus(null);
+    const files = Array.from(event.dataTransfer.files);
+    setSelectedFiles(normalizeSelectedFiles(files));
+  }
+
+  async function handleUploadSelectedFiles() {
+    if (!selectedFiles.length || isUploading) {
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadStatus(null);
+    try {
+      const uploaded = await uploadAdminFiles(selectedFiles);
+      resetSelection({ preserveStatus: true });
+      setPage(1);
+      await loadUploads(1, sortKey, sortDirection);
+      setUploadStatus(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
+    } catch (exc) {
+      setUploadError(exc instanceof Error ? exc.message : "Failed to upload files.");
+    } finally {
+      setIsUploading(false);
     }
   }
 
@@ -238,12 +310,75 @@ export function AdminUploads() {
                 <p>Accepts Markdown and PDF up to 100 MB each</p>
               </div>
             </div>
-            <div className="upload-dropzone">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".md,.pdf"
+              multiple
+              className="upload-file-input"
+              onChange={handleFileSelection}
+            />
+            <div
+              className={`upload-dropzone${isDragging ? " is-dragging" : ""}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
               <div className="upload-dropzone-inner">
                 <strong>Drag and drop files</strong>
-                <span>or drop local documents into this area</span>
+                <span>or choose files from your computer</span>
               </div>
-              <p className="upload-dropzone-note">Uploaded files appear in the table below once they land.</p>
+              <div className="upload-dropzone-files" aria-live="polite">
+                {selectedFiles.length ? (
+                  <>
+                    <span className="upload-dropzone-note">
+                      {selectedFiles.length} file{selectedFiles.length === 1 ? "" : "s"} selected
+                    </span>
+                    <ul>
+                      {selectedFiles.map((file) => (
+                        <li key={`${file.name}-${file.size}`}>
+                          <strong>{file.name}</strong>
+                          <span>{formatFileSize(file.size)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="upload-dropzone-note">
+                    Uploaded files appear in the table below once they land.
+                  </p>
+                )}
+              </div>
+              {uploadStatus ? <p className="upload-dropzone-success">{uploadStatus}</p> : null}
+              {uploadError ? <p className="upload-dropzone-error">{uploadError}</p> : null}
+              <div className="upload-dropzone-actions">
+                <button type="button" onClick={focusFilePicker} disabled={isUploading}>
+                  Choose files
+                </button>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={handleUploadSelectedFiles}
+                  disabled={!selectedFiles.length || isUploading}
+                >
+                  {isUploading ? "Uploading..." : "Upload selected"}
+                </button>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => resetSelection()}
+                  disabled={!selectedFiles.length || isUploading}
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </section>
         </section>
