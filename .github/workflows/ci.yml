@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: acme
+          POSTGRES_PASSWORD: acme
+          POSTGRES_DB: acme_assistant
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U acme -d acme_assistant"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://acme:acme@localhost:5432/acme_assistant
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      EMBEDDING_MODEL_NAME: sentence-transformers/all-MiniLM-L6-v2
+      EMBEDDING_DIMENSION: "384"
+      RERANK_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L-6-v2
+      VECTORSTORE_PATH: artifacts/faiss_index
+      CHUNKS_PATH: artifacts/chunks.jsonl
+      UPLOADS_PATH: artifacts/uploads
+      MAX_UPLOAD_FILE_SIZE_BYTES: "104857600"
+      RETRIEVER_BACKEND: faiss
+      BACKEND_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      LANGSMITH_TRACING: "false"
+      LANGSMITH_TRACING_V2: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements_dev.txt
+
+      - name: Run database migrations
+        run: python -m alembic -c alembic.ini upgrade head
+
+      - name: Start Celery worker
+        run: |
+          celery -A src.backend.app.core.queue:celery_app worker \
+            --loglevel=INFO \
+            --concurrency=1 \
+            --pool=solo \
+            > worker.log 2>&1 &
+          echo $! > worker.pid
+
+      - name: Wait for Celery worker
+        run: |
+          for i in $(seq 1 30); do
+            if python -c "from src.backend.app.core.queue import check_celery_worker_health; health = check_celery_worker_health(); raise SystemExit(0 if health.available else 1)"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Celery worker did not become healthy"
+          cat worker.log
+          exit 1
+
+      - name: Run backend tests
+        run: python -m pytest
+
+      - name: Stop Celery worker
+        if: always()
+        run: |
+          if [ -f worker.pid ]; then
+            kill "$(cat worker.pid)" || true
+          fi
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix src/frontend
+
+      - name: Run frontend tests
+        run: npm --prefix src/frontend test
+
+      - name: Build frontend
+        run: npm --prefix src/frontend run build
