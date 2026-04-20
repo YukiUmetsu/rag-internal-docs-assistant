@@ -9,7 +9,6 @@ from langchain_core.documents import Document
 from src.rag.config import get_chunks_path
 from src.rag.debug_log import append_rerank_debug_log
 from src.rag.hybrid_retrieve import keyword_retrieve, merge_retrieval_results
-from src.rag.postgres_retrieve import retrieve_dense_candidates, retrieve_keyword_candidates
 from src.rag.rerank import rerank_candidates
 from src.rag.retriever_backend import (
     RetrieverBackend,
@@ -119,6 +118,8 @@ def retrieve(
             if not dense_docs and not use_hybrid:
                 dense_docs = vectorstore.similarity_search(query, k=initial_k)
     else:
+        from src.rag.postgres_retrieve import retrieve_dense_candidates, retrieve_keyword_candidates
+
         database_url = settings.database_url
         if not database_url:
             raise RuntimeError("DATABASE_URL is not configured")

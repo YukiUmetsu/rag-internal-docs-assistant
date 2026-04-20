@@ -18,13 +18,16 @@ EVAL_GOLD_PATH ?= evals/retrieval_gold.yaml
 EVAL_OUTPUT_PATH ?= artifacts/evals/retrieval_eval_results.json
 EVAL_BASELINE_PATH ?= evals/baselines/faiss_hybrid_rerank.json
 EVAL_DEBUG_LOG_PATH ?= artifacts/evals/rerank_debug.jsonl
+GROUNDEDNESS_GOLD_PATH ?= evals/groundedness_gold.yaml
+GROUNDEDNESS_OUTPUT_PATH ?= artifacts/evals/groundedness_eval_results.json
+GROUNDEDNESS_DEBUG_LOG_PATH ?= artifacts/evals/groundedness_debug.jsonl
 DOCKER_COMPOSE ?= docker compose
 DOCKER_COMPOSE_PROD ?= docker compose -f docker-compose.yml -f docker-compose.prod.yml
 DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
 POSTGRES_DB ?= acme_assistant
 POSTGRES_USER ?= acme
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare eval-postgres eval-postgres-compare docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs docker-ingest docker-verify-corpus docker-eval docker-prod-up docker-prod-down docker-prod-logs docker-prod-test retriever-faiss retriever-postgres local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare local-eval-postgres local-eval-postgres-compare
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare eval-postgres eval-postgres-compare groundedness-eval docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs docker-ingest docker-verify-corpus docker-eval docker-prod-up docker-prod-down docker-prod-logs docker-prod-test retriever-faiss retriever-postgres local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare local-eval-postgres local-eval-postgres-compare local-groundedness-eval
 
 help:
 	@echo "Available targets:"
@@ -42,6 +45,7 @@ help:
 	@echo "  make eval-compare      Compare evals against the baseline inside Docker"
 	@echo "  make eval-postgres     Run retrieval evals against the Postgres backend"
 	@echo "  make eval-postgres-compare Compare Postgres evals against the FAISS baseline"
+	@echo "  make groundedness-eval Run groundedness evals inside Docker"
 	@echo "  make docker-migrate    Apply database migrations"
 	@echo "  make docker-db-shell   Open a psql shell in the Postgres container"
 	@echo "  make docker-worker-logs Follow Docker worker logs"
@@ -55,6 +59,7 @@ help:
 	@echo "  make retriever-postgres Switch Docker to the Postgres retriever"
 	@echo "  make local-dev         Start local non-Docker dev servers"
 	@echo "  make local-test        Run local non-Docker pytest"
+	@echo "  make local-groundedness-eval Run groundedness evals locally"
 
 install:
 	$(DOCKER_COMPOSE) build
@@ -271,6 +276,25 @@ local-eval-postgres-compare:
 		--require-mrr 1.0 \
 		--require-top-1-accuracy 1.0 \
 		--compare-baseline $(EVAL_BASELINE_PATH)
+
+groundedness-eval:
+	$(DOCKER_API_RUN) python -m evals.run_groundedness_eval \
+		--gold-path $(GROUNDEDNESS_GOLD_PATH) \
+		--output-path $(GROUNDEDNESS_OUTPUT_PATH) \
+		--debug-log-path $(GROUNDEDNESS_DEBUG_LOG_PATH) \
+		--require-groundedness-score 0.80 \
+		--require-critical-unsupported-rate 0.0 \
+		--require-conflict-rate 0.0
+
+local-groundedness-eval:
+	$(PYTHON) -m evals.run_groundedness_eval \
+		--gold-path $(GROUNDEDNESS_GOLD_PATH) \
+		--output-path $(GROUNDEDNESS_OUTPUT_PATH) \
+		--debug-log-path $(GROUNDEDNESS_DEBUG_LOG_PATH) \
+		--retriever-backend faiss \
+		--require-groundedness-score 0.80 \
+		--require-critical-unsupported-rate 0.0 \
+		--require-conflict-rate 0.0
 
 docker-up:
 	$(DOCKER_COMPOSE) up --build

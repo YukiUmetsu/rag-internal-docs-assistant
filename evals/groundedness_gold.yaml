@@ -1,0 +1,98 @@
+queries:
+  - id: refund_window_2026
+    category: version_sensitive
+    query: "What is the refund window?"
+    expected_sources:
+      - "refund_policy_2026.md"
+    expected_behavior: "answer"
+    claims:
+      - id: refund_window
+        text: "The refund window is 30 days."
+        type: "numeric"
+        critical: true
+        supported_by:
+          - "refund_policy_2026.md"
+        conflict_with:
+          - "refund_policy_2025.md"
+
+  - id: pto_days_2026
+    category: latest_policy_fact
+    query: "How many PTO days do employees get?"
+    expected_sources:
+      - "pto_policy_2026.md"
+    expected_behavior: "answer"
+    claims:
+      - id: pto_days
+        text: "Employees receive 18 days of PTO per year."
+        type: "numeric"
+        critical: true
+        supported_by:
+          - "pto_policy_2026.md"
+        conflict_with:
+          - "pto_policy_2025.md"
+
+  - id: exact_known_issues
+    category: exact_term
+    query: "Known Issues"
+    expected_sources:
+      - "failed_payment_playbook.md"
+      - "refund_policy_2026.md"
+    expected_behavior: "answer"
+    claims:
+      - id: playbook_known_issues
+        text: "The failed payment playbook includes duplicate failures and webhook delays."
+        type: "procedural"
+        critical: true
+        supported_by:
+          - "failed_payment_playbook.md"
+      - id: refund_edge_case
+        text: "**Duplicate Refund Requests** and **Duplicate Refund Attempts**"
+        type: "procedural"
+        critical: false
+        optional: true
+        supported_by:
+          - "refund_policy_2026.md"
+
+  - id: exact_sev2
+    category: exact_term
+    query: "SEV2"
+    expected_sources:
+      - "payment_failure_spike.md"
+    expected_behavior: "answer"
+    claims:
+      - id: sev2_definition
+        text: "SEV2 indicates partial degradation."
+        type: "procedural"
+        critical: true
+        supported_by:
+          - "payment_failure_spike.md"
+
+  - id: duplicate_refund_attempts
+    category: exact_term
+    query: "How should duplicate refund attempts be handled?"
+    expected_sources:
+      - "refund_policy_2026.md"
+    expected_behavior: "answer"
+    claims:
+      - id: duplicate_refund_handling
+        text: "Duplicate refund attempts should rely on idempotency keys and return existing refund results."
+        type: "procedural"
+        critical: true
+        supported_by:
+          - "refund_policy_2026.md"
+
+  - id: insufficient_context_refusal
+    category: abstain
+    query: "What is the exact employee badge color policy?"
+    expected_sources: []
+    expected_behavior: "abstain"
+    abstain_if:
+      - "insufficient_context"
+    claims:
+      - id: no_hallucination
+        text: "The answer should not invent a badge color policy."
+        type: "factual"
+        critical: true
+        supported_by: []
+        conflict_with: []
+        must_appear_in_answer: false

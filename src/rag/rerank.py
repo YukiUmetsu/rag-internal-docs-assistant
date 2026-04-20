@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, Sequence, Tuple
@@ -34,7 +35,13 @@ class CrossEncoderReranker:
 
     def __init__(self, model_name: str | None = None) -> None:
         self.model_name = model_name or get_rerank_model_name()
-        self.model = CrossEncoder(self.model_name)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                category=FutureWarning,
+                message=".*resume_download.*",
+            )
+            self.model = CrossEncoder(self.model_name)
 
     def score(self, query: str, docs: Sequence[Document]) -> List[float]:
         if not docs:

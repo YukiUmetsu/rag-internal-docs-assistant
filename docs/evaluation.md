@@ -1,14 +1,12 @@
 # Evaluation
 
-The retrieval work in this project was driven by a committed gold set and a
-baseline-first workflow.
+The retrieval work in this project uses a committed gold set and baseline
+comparisons.
 
-## Starting point
+## Baseline
 
-The project began with FAISS-backed retrieval and a gold evaluation set that
-measured whether the right source document appeared in the top results.
-
-The initial hybrid retriever was decent, but it was not yet strong enough on:
+FAISS-backed retrieval and the gold evaluation set measure whether the right
+source document appears in the top results. Hybrid retrieval must handle:
 
 - exact version questions
 - year-sensitive policy questions
@@ -29,7 +27,7 @@ terms and broader semantic matches.
 
 ## Why RRF helped
 
-I replaced a simple dense-first merge with Reciprocal Rank Fusion (RRF).
+Reciprocal Rank Fusion (RRF) combines dense and keyword retrieval signals.
 
 That helped because:
 
@@ -52,34 +50,39 @@ candidate set and the final ranking has more diversity.
 
 The hardest failure mode was version-sensitive retrieval.
 
-For queries that clearly name one year, the retriever now applies a single-year
+For queries that clearly name one year, the retriever applies a single-year
 metadata filter before reranking. That keeps the system from preferring a
 semantically similar but wrong-year policy.
 
 Multi-year comparison queries are left unfiltered.
 
-## Current result
+## Results
 
-The current `hybrid_rerank` gate reaches:
+The `hybrid_rerank` gate reaches:
 
 - `source_hit_rate = 1.000`
 - `mrr = 1.000`
 - `top_1_accuracy = 1.000`
 
-That makes the evaluation story easy to explain:
+## Operational value
 
-- baseline first
-- fix the failure mode
-- compare again
-- keep the winning change only if it improves the gold set
+The evaluation surfaces:
 
-## Why this is useful in interviews
+- retrieval failures
+- ranking changes that improve or regress results
+- baseline comparisons
+- version-sensitive question handling
 
-This shows more than “I built a retriever.”
+## Groundedness
 
-It shows:
+Groundedness measures answer trustworthiness rather than source recall.
 
-- I can diagnose retrieval failures
-- I can explain why a ranking change helps
-- I can keep a baseline and measure real gains
-- I can protect version-sensitive questions, which matter in internal docs
+The concrete groundedness plan lives in
+[docs/groundedness-eval.md](/Users/yukiumetsu/Documents/projects/demo/acme-company-assistant/docs/groundedness-eval.md).
+
+That spec defines:
+
+- a row schema for claim-level evaluation
+- support / conflict / abstain labels
+- answer-level groundedness formulas
+- the release gates I would use for a production-style RAG demo

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 
 from dotenv import load_dotenv
 
@@ -49,7 +50,13 @@ def validate_embedding_configuration() -> None:
     if expected_dimension is None:
         from sentence_transformers import SentenceTransformer
 
-        expected_dimension = SentenceTransformer(model_name).get_sentence_embedding_dimension()
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                category=FutureWarning,
+                message=".*resume_download.*",
+            )
+            expected_dimension = SentenceTransformer(model_name).get_sentence_embedding_dimension()
     if configured_dimension != expected_dimension:
         raise ValueError(
             "EMBEDDING_DIMENSION does not match the selected embedding model "
