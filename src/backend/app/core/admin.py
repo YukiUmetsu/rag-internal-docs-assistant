@@ -165,6 +165,8 @@ def get_admin_dashboard(
     if not database_url:
         raise RuntimeError("DATABASE_URL is not configured")
 
+    # Load the corpus helpers lazily so importing this module does not pull in
+    # the heavier ingest stack unless the dashboard actually needs it.
     from src.backend.app.core.corpus import count_active_corpus_rows, verify_corpus_integrity
 
     backend_state = get_admin_retriever_backend(database_url, retriever_backend)
@@ -390,7 +392,7 @@ def get_admin_job(database_url: str | None, job_id: str) -> AdminJobStat:
         raise RuntimeError("DATABASE_URL is not configured")
 
     job = get_ingest_job(database_url, job_id)
-    counts = _get_job_corpus_counts(database_url, job_id)
+    counts = _load_job_corpus_counts(database_url, job_id)
     summary = job.result_message or job.error_message or "Queued for processing."
     return AdminJobStat(
         id=job.id,
@@ -699,7 +701,7 @@ def _get_search_activity_stats(database_url: str) -> dict[str, Any]:
 
 
 def _build_daily_search_series(database_url: str, *, days: int) -> list[AdminSeriesPoint]:
-    return _build_daily_series(
+    return _build_daily_series_from_query(
         database_url,
         days=days,
         query="""
@@ -715,7 +717,7 @@ def _build_daily_search_series(database_url: str, *, days: int) -> list[AdminSer
 
 
 def _build_daily_latency_series(database_url: str, *, days: int) -> list[AdminSeriesPoint]:
-    return _build_daily_series(
+    return _build_daily_series_from_query(
         database_url,
         days=days,
         query="""
@@ -731,7 +733,7 @@ def _build_daily_latency_series(database_url: str, *, days: int) -> list[AdminSe
 
 
 def _build_daily_ingest_series(database_url: str, *, days: int) -> list[AdminSeriesPoint]:
-    return _build_daily_series(
+    return _build_daily_series_from_query(
         database_url,
         days=days,
         query="""
@@ -746,7 +748,9 @@ def _build_daily_ingest_series(database_url: str, *, days: int) -> list[AdminSer
     )
 
 
-def _build_daily_series(database_url: str, *, days: int, query: str) -> list[AdminSeriesPoint]:
+def _build_daily_series_from_query(database_url: str, *, days: int, query: str) -> list[AdminSeriesPoint]:
+    # Execute a date-bucketed aggregate query and normalize the rows into the
+    # compact series shape used by the dashboard charts.
     engine = create_engine(database_url, pool_pre_ping=True)
     today = datetime.now(timezone.utc).date()
     start = today - timedelta(days=days - 1)
@@ -765,6 +769,8 @@ def _build_daily_series(database_url: str, *, days: int, query: str) -> list[Adm
 
 
 def _get_top_questions(database_url: str, *, since_days: int, limit: int) -> list[AdminQuestionStat]:
+    # Group search history by question so the dashboard can surface the most
+    # repeated and most recently asked queries.
     engine = create_engine(database_url, pool_pre_ping=True)
     since = datetime.now(timezone.utc) - timedelta(days=since_days)
     try:
@@ -894,7 +900,7 @@ def _get_latest_upload_job_id(database_url: str, upload_id: str) -> str | None:
     return None if row is None else str(row["ingest_job_id"])
 
 
-def _get_job_corpus_counts(database_url: str, job_id: str) -> dict[str, int]:
+def _load_job_corpus_counts(database_url: str, job_id: str) -> dict[str, int]:
     engine = create_engine(database_url, pool_pre_ping=True)
     try:
         with engine.connect() as connection:
@@ -925,6 +931,7 @@ def _get_job_corpus_counts(database_url: str, job_id: str) -> dict[str, int]:
 
 
 def _count_failed_jobs() -> int:
+    # Keep this helper small because it feeds the dashboard summary.
     return _count_jobs_by_status("failed")
 
 
@@ -953,15 +960,6 @@ def _count_jobs_by_status(status: str) -> int:
     return int(row)
 
 
-def _build_health_flags(report: Any) -> list[AdminHealthFlag]:
-    return [
-        AdminHealthFlag(label="Orphan chunks", value=str(report.orphan_chunk_count)),
-        AdminHealthFlag(label="Docs without chunks", value=str(report.source_documents_without_chunks)),
-        AdminHealthFlag(label="Missing uploads", value=str(report.documents_with_missing_files)),
-        AdminHealthFlag(label="Failed jobs", value=str(_count_failed_jobs())),
-    ]
-
-
 def _corpus_status(report: Any) -> str:
     if report.issues:
         issue_codes = {issue.code for issue in report.issues}
@@ -984,17 +982,15 @@ def _row_day(value: Any) -> date:
     return datetime.fromisoformat(str(value)).date()
 
 
-def _build_health_flags_from_counts(report: Any) -> list[AdminHealthFlag]:
+def _build_health_flags(report: Any) -> list[AdminHealthFlag]:
+    # Keep the dashboard summary compact by exposing just the highest-signal
+    # corpus and ingest health flags.
     return [
         AdminHealthFlag(label="Orphan chunks", value=str(report.orphan_chunk_count)),
         AdminHealthFlag(label="Docs without chunks", value=str(report.source_documents_without_chunks)),
         AdminHealthFlag(label="Missing uploads", value=str(report.documents_with_missing_files)),
         AdminHealthFlag(label="Failed jobs", value=str(_count_failed_jobs())),
     ]
-
-
-def _build_health_flags(report: Any) -> list[AdminHealthFlag]:
-    return _build_health_flags_from_counts(report)
 
 
 def _upload_stat_from_row(row: dict[str, Any]) -> AdminUploadStat:
