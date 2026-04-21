@@ -74,6 +74,7 @@ main queue.
 - Copy `.env.example` to `.env` and set values when running LLM-backed commands.
 - Build the app images: `make install`
 - Run tests from the repo root: `make test`
+- Install the pre-push hook once: `make install-hooks`
 
 For local non-Docker debugging, use the `local-*` Makefile targets.
 
@@ -82,6 +83,9 @@ make local-backend
 make local-frontend
 make local-test
 ```
+
+The pre-push hook runs `make unit-test`, which checks the Docker-backed unit
+suite only.
 
 The default Makefile targets use Docker.
 
