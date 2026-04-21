@@ -70,7 +70,7 @@ jobs:
 
       - name: Start Celery worker
         run: |
-          celery -A src.backend.app.core.queue:celery_app worker \
+          celery -A src.backend.app.core.queue.app:celery_app worker \
             --loglevel=INFO \
             --concurrency=1 \
             --pool=solo \
@@ -80,7 +80,7 @@ jobs:
       - name: Wait for Celery worker
         run: |
           for i in $(seq 1 30); do
-            if python -c "from src.backend.app.core.queue import check_celery_worker_health; health = check_celery_worker_health(); raise SystemExit(0 if health.available else 1)"; then
+            if python -c "from src.backend.app.core.queue.health import check_celery_worker_health; health = check_celery_worker_health(); raise SystemExit(0 if health.available else 1)"; then
               exit 0
             fi
             sleep 2
