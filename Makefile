@@ -28,7 +28,7 @@ DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
 POSTGRES_DB ?= acme_assistant
 POSTGRES_USER ?= acme
 
-.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test eval eval-baseline eval-compare eval-postgres eval-postgres-compare groundedness-eval docker-up docker-down docker-logs docker-test docker-migrate docker-db-shell docker-worker-logs docker-ingest docker-verify-corpus docker-eval docker-prod-up docker-prod-down docker-prod-logs docker-prod-test retriever-faiss retriever-postgres local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-eval local-eval-baseline local-eval-compare local-eval-postgres local-eval-postgres-compare local-groundedness-eval
+.PHONY: help install install-python install-frontend dev stop logs-backend logs-frontend logs-worker backend frontend test unit-test eval eval-baseline eval-compare eval-postgres eval-postgres-compare groundedness-eval docker-up docker-down docker-logs docker-test docker-unit-test docker-migrate docker-db-shell docker-worker-logs docker-ingest docker-verify-corpus docker-eval docker-prod-up docker-prod-down docker-prod-logs docker-prod-test retriever-faiss retriever-postgres local-dev local-stop local-logs-backend local-logs-frontend local-backend local-frontend local-test local-unit-test local-eval local-eval-baseline local-eval-compare local-eval-postgres local-eval-postgres-compare local-groundedness-eval install-hooks
 
 help:
 	@echo "Available targets:"
@@ -41,6 +41,7 @@ help:
 	@echo "  make backend           Start only the Docker backend service"
 	@echo "  make frontend          Start the Docker frontend service"
 	@echo "  make test              Run pytest inside the backend Docker image"
+	@echo "  make unit-test         Run the local unit test suite"
 	@echo "  make eval              Run retrieval evals inside the backend Docker image"
 	@echo "  make eval-baseline     Regenerate the FAISS baseline inside Docker"
 	@echo "  make eval-compare      Compare evals against the baseline inside Docker"
@@ -60,6 +61,7 @@ help:
 	@echo "  make retriever-postgres Switch Docker to the Postgres retriever"
 	@echo "  make local-dev         Start local non-Docker dev servers"
 	@echo "  make local-test        Run local non-Docker pytest"
+	@echo "  make local-unit-test   Run local backend and frontend unit tests"
 	@echo "  make local-groundedness-eval Run groundedness evals locally"
 
 install:
@@ -91,6 +93,8 @@ frontend:
 	$(DOCKER_COMPOSE) up --build frontend
 
 test: docker-test
+
+unit-test: docker-unit-test
 
 eval:
 	$(DOCKER_API_RUN) python -m evals.run_retrieval_eval \
@@ -220,6 +224,10 @@ local-frontend:
 local-test:
 	$(PYTHON) -m pytest
 
+local-unit-test:
+	$(PYTHON) -m pytest tests/unit
+	$(NPM) --prefix src/frontend test
+
 local-eval:
 	$(PYTHON) -m evals.run_retrieval_eval \
 		--gold-path $(EVAL_GOLD_PATH) \
@@ -313,6 +321,12 @@ docker-test:
 	$(DOCKER_COMPOSE) up -d postgres redis worker
 	$(DOCKER_COMPOSE) run --rm api python -m pytest
 
+docker-unit-test:
+	$(DOCKER_COMPOSE) build api worker
+	$(DOCKER_COMPOSE) up -d postgres redis worker
+	$(DOCKER_COMPOSE) run --rm api python -m pytest tests/unit
+	$(NPM) --prefix src/frontend test
+
 docker-migrate:
 	$(DOCKER_COMPOSE) run --rm migrate
 
@@ -328,6 +342,9 @@ docker-verify-corpus:
 	$(DOCKER_API_RUN) python -m src.backend.app.scripts.verify_corpus
 
 docker-eval: eval-postgres-compare
+
+install-hooks:
+	git config core.hooksPath .githooks
 
 docker-prod-up:
 	$(DOCKER_COMPOSE_PROD) up --build -d
