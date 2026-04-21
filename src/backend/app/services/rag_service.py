@@ -9,6 +9,7 @@ from langchain_core.documents import Document
 from langsmith import traceable
 
 from src.backend.app.core.search_history import persist_search_history
+from src.backend.app.core.request_ids import generate_request_id
 from src.backend.app.core.settings import get_settings
 from src.backend.app.core.tracing import get_langsmith_project
 from src.backend.app.schemas.chat import ChatRequest, ChatResponse
@@ -145,24 +146,33 @@ def retrieve_context(question: str, final_k: int) -> RetrievedContext:
     process_inputs=summarize_request_inputs,
     process_outputs=summarize_retrieve_response,
 )
-def retrieve_only(request: RetrieveRequest) -> RetrieveResponse:
+def retrieve_only(
+    request: RetrieveRequest,
+    *,
+    request_id: str | None = None,
+    langsmith_extra: dict[str, Any] | None = None,
+) -> RetrieveResponse:
+    request_id = request_id or generate_request_id()
     context = retrieve_context(question=request.question, final_k=request.final_k)
     sources = serialize_documents(context.docs)
+    history_persisted = persist_retrieval_history(
+        request_kind="retrieve",
+        question=request.question,
+        requested_mode=request.mode,
+        mode_used="retrieve_only",
+        retrieval=context.metadata,
+        sources=sources,
+        latency_ms=context.latency_ms,
+        history_id=request_id,
+        answer=None,
+    )
     response = RetrieveResponse(
+        request_id=request_id if history_persisted else None,
         sources=sources,
         retrieval=context.metadata,
         mode_used="retrieve_only",
         latency_ms=context.latency_ms,
-    )
-    persist_retrieval_history(
-        request_kind="retrieve",
-        question=request.question,
-        requested_mode=request.mode,
-        mode_used=response.mode_used,
-        retrieval=context.metadata,
-        sources=sources,
-        latency_ms=response.latency_ms,
-        answer=None,
+        warning=None if history_persisted else "Search history persistence failed; feedback is unavailable.",
     )
     return response
 
@@ -175,7 +185,13 @@ def retrieve_only(request: RetrieveRequest) -> RetrieveResponse:
     process_inputs=summarize_request_inputs,
     process_outputs=summarize_chat_response,
 )
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(
+    request: ChatRequest,
+    *,
+    request_id: str | None = None,
+    langsmith_extra: dict[str, Any] | None = None,
+) -> ChatResponse:
+    request_id = request_id or generate_request_id()
     start = time.perf_counter()
     context = retrieve_context(question=request.question, final_k=request.final_k)
     warning = None
@@ -197,24 +213,30 @@ def chat(request: ChatRequest) -> ChatResponse:
 
     latency_ms = int((time.perf_counter() - start) * 1000)
     sources = serialize_documents(context.docs)
+    history_persisted = persist_retrieval_history(
+        request_kind="chat",
+        question=request.question,
+        requested_mode=request.mode,
+        mode_used=mode_used,
+        retrieval=context.metadata,
+        sources=sources,
+        latency_ms=latency_ms,
+        history_id=request_id,
+        answer=answer,
+        warning=warning,
+    )
+    response_warning = warning
+    if not history_persisted:
+        history_warning = "Search history persistence failed; feedback is unavailable."
+        response_warning = history_warning if response_warning is None else f"{response_warning} {history_warning}"
     response = ChatResponse(
+        request_id=request_id if history_persisted else None,
         answer=answer,
         sources=sources,
         retrieval=context.metadata,
         mode_used=mode_used,
         latency_ms=latency_ms,
-        warning=warning,
-    )
-    persist_retrieval_history(
-        request_kind="chat",
-        question=request.question,
-        requested_mode=request.mode,
-        mode_used=response.mode_used,
-        retrieval=context.metadata,
-        sources=sources,
-        latency_ms=response.latency_ms,
-        answer=response.answer,
-        warning=response.warning,
+        warning=response_warning,
     )
     return response
 
@@ -250,13 +272,15 @@ def persist_retrieval_history(
     retrieval: RetrievalMetadata,
     sources: list[Source],
     latency_ms: int,
+    history_id: str | None = None,
     answer: str | None = None,
     warning: str | None = None,
-) -> None:
+) -> bool:
     settings = get_settings()
     try:
-        persist_search_history(
+        history_id = persist_search_history(
             settings.database_url,
+            history_id=history_id,
             request_kind=request_kind,
             question=question,
             requested_mode=requested_mode,
@@ -267,5 +291,7 @@ def persist_retrieval_history(
             answer=answer,
             warning=warning,
         )
+        return history_id is not None
     except Exception as exc:  # pragma: no cover - defensive fail-soft guard
         logger.warning("Search history persistence failed: %s", exc)
+        return False

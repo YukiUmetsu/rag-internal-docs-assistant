@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from unittest.mock import ANY, patch
 
@@ -20,6 +21,7 @@ from src.backend.app.core.admin import (
 )
 from src.backend.app.core.queue import CeleryWorkerHealth, DiagnosticTaskStatus, RedisHealth
 from src.backend.app.core.ingest_jobs import IngestJobDetail, IngestJobSummary
+from src.backend.app.core.feedback import FeedbackDetail as FeedbackDetailRecord
 from src.backend.app.core.uploads import UploadedFileSummary as UploadedFileRecord
 from src.backend.app.schemas.chat import ChatResponse
 from src.backend.app.schemas.retrieval import RetrievalMetadata
@@ -62,7 +64,11 @@ def test_health_endpoint_returns_status() -> None:
 
 
 def test_retrieve_endpoint_serializes_sources() -> None:
-    with patch.object(rag_service, "retrieve", return_value=[make_doc()]):
+    with (
+        patch("src.backend.app.api.routes.generate_request_id", return_value="request-123"),
+        patch.object(rag_service, "retrieve", return_value=[make_doc()]),
+        patch.object(rag_service, "persist_search_history", return_value="request-123"),
+    ):
         response = client.post(
             "/api/retrieve",
             json={
@@ -74,6 +80,7 @@ def test_retrieve_endpoint_serializes_sources() -> None:
 
     assert response.status_code == 200
     body = response.json()
+    assert body["request_id"] == "request-123"
     assert body["mode_used"] == "retrieve_only"
     assert body["sources"][0]["file_name"] == "refund_policy_2025.md"
     assert body["retrieval"]["detected_year"] == "2025"
@@ -95,11 +102,38 @@ def test_retrieve_endpoint_still_succeeds_when_history_persistence_fails() -> No
 
     assert response.status_code == 200
     body = response.json()
+    assert body["request_id"] is None
     assert body["sources"][0]["file_name"] == "refund_policy_2025.md"
+    assert "feedback is unavailable" in body["warning"]
+
+
+def test_retrieve_endpoint_omits_request_id_when_history_write_returns_none() -> None:
+    with (
+        patch("src.backend.app.api.routes.generate_request_id", return_value="request-789"),
+        patch.object(rag_service, "retrieve", return_value=[make_doc()]),
+        patch.object(rag_service, "persist_search_history", return_value=None),
+    ):
+        response = client.post(
+            "/api/retrieve",
+            json={
+                "question": "What was the refund window in 2025?",
+                "mode": "retrieve_only",
+                "final_k": 4,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["request_id"] is None
+    assert "feedback is unavailable" in body["warning"]
 
 
 def test_chat_endpoint_supports_mock_mode() -> None:
-    with patch.object(rag_service, "retrieve", return_value=[make_doc()]):
+    with (
+        patch("src.backend.app.api.routes.generate_request_id", return_value="request-456"),
+        patch.object(rag_service, "retrieve", return_value=[make_doc()]),
+        patch.object(rag_service, "persist_search_history", return_value="request-456"),
+    ):
         response = client.post(
             "/api/chat",
             json={
@@ -111,6 +145,7 @@ def test_chat_endpoint_supports_mock_mode() -> None:
 
     assert response.status_code == 200
     body = response.json()
+    assert body["request_id"] == "request-456"
     assert body["mode_used"] == "mock"
     assert "Mock answer" in body["answer"]
     assert body["sources"][0]["year"] == "2025"
@@ -137,6 +172,46 @@ def test_chat_endpoint_falls_back_when_live_generation_fails() -> None:
     assert "Mock answer" in body["answer"]
 
 
+def test_chat_endpoint_omits_request_id_when_history_persistence_fails() -> None:
+    with (
+        patch.object(rag_service, "retrieve", return_value=[make_doc()]),
+        patch.object(rag_service, "persist_search_history", side_effect=RuntimeError("db down")),
+    ):
+        response = client.post(
+            "/api/chat",
+            json={
+                "question": "What was the refund window in 2025?",
+                "mode": "mock",
+                "final_k": 4,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["request_id"] is None
+    assert "feedback is unavailable" in body["warning"]
+
+
+def test_chat_endpoint_omits_request_id_when_history_write_returns_none() -> None:
+    with (
+        patch.object(rag_service, "retrieve", return_value=[make_doc()]),
+        patch.object(rag_service, "persist_search_history", return_value=None),
+    ):
+        response = client.post(
+            "/api/chat",
+            json={
+                "question": "What was the refund window in 2025?",
+                "mode": "mock",
+                "final_k": 4,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["request_id"] is None
+    assert "feedback is unavailable" in body["warning"]
+
+
 def test_chat_response_schema_allows_retrieve_only_mode() -> None:
     response = ChatResponse(
         answer="Retrieved sources are ready.",
@@ -153,6 +228,109 @@ def test_chat_response_schema_allows_retrieve_only_mode() -> None:
     )
 
     assert response.mode_used == "retrieve_only"
+
+
+def test_feedback_endpoint_serializes_submission() -> None:
+    feedback_record = FeedbackDetailRecord(
+        id="feedback-123",
+        search_query_id="request-123",
+        request_kind="chat",
+        question="What was the refund window in 2025?",
+        verdict="not_helpful",
+        reason_code="grounding",
+        issue_category="grounding",
+        review_status="new",
+        comment_preview="Too vague",
+        created_at=datetime.fromisoformat("2026-04-15T12:00:00+00:00"),
+        reviewed_at=None,
+        comment="Too vague",
+        reviewed_by=None,
+        promoted_eval_path=None,
+        langsmith_run_id="request-123",
+    )
+    with (
+        patch("src.backend.app.api.routes.persist_answer_feedback", return_value=feedback_record),
+    ):
+        response = client.post(
+            "/api/feedback",
+            json={
+                "search_query_id": "request-123",
+                "verdict": "not_helpful",
+                "reason_code": "grounding",
+                "comment": "Too vague",
+            },
+        )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["id"] == "feedback-123"
+    assert body["search_query_id"] == "request-123"
+    assert body["reason_code"] == "grounding"
+
+
+def test_admin_feedback_update_logs_missing_row(caplog) -> None:
+    with (
+        patch("src.backend.app.api.routes.update_answer_feedback_review", side_effect=KeyError("feedback-123")),
+        caplog.at_level(logging.WARNING, logger="src.backend.app.api.routes"),
+    ):
+        response = client.patch(
+            "/api/admin/feedback/feedback-123",
+            json={
+                "review_status": "triaged",
+                "reviewed_by": "reviewer@example.com",
+            },
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Feedback entry not found"
+    assert "endpoint=update_admin_feedback" in caplog.text
+    assert "feedback_id=feedback-123" in caplog.text
+    assert "review_status=triaged" in caplog.text
+    assert "reviewed_by=reviewer@example.com" in caplog.text
+
+
+def test_admin_feedback_update_logs_runtime_failure(caplog) -> None:
+    with (
+        patch(
+            "src.backend.app.api.routes.update_answer_feedback_review",
+            side_effect=RuntimeError("db unavailable"),
+        ),
+        caplog.at_level(logging.WARNING, logger="src.backend.app.api.routes"),
+    ):
+        response = client.patch(
+            "/api/admin/feedback/feedback-123",
+            json={
+                "review_status": "triaged",
+                "reviewed_by": "reviewer@example.com",
+            },
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "db unavailable"
+    assert "endpoint=update_admin_feedback" in caplog.text
+    assert "feedback_id=feedback-123" in caplog.text
+    assert "db unavailable" in caplog.text
+
+
+def test_admin_feedback_update_rejects_invalid_transition(caplog) -> None:
+    with (
+        patch(
+            "src.backend.app.api.routes.update_answer_feedback_review",
+            side_effect=ValueError("Cannot transition feedback review status from promoted to promoted"),
+        ),
+        caplog.at_level(logging.WARNING, logger="src.backend.app.api.routes"),
+    ):
+        response = client.patch(
+            "/api/admin/feedback/feedback-123",
+            json={
+                "review_status": "promoted",
+                "reviewed_by": "reviewer@example.com",
+            },
+        )
+
+    assert response.status_code == 409
+    assert "promoted to promoted" in response.json()["detail"]
+    assert "endpoint=update_admin_feedback" in caplog.text
 
 
 def test_celery_ping_endpoint_enqueues_task() -> None:

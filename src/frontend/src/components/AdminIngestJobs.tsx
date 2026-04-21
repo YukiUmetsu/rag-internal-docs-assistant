@@ -259,6 +259,9 @@ export function AdminIngestJobs() {
           <a href="/admin" className="nav-link">
             Dashboard
           </a>
+          <a href="/admin/feedback" className="nav-link">
+            Feedback
+          </a>
           <a href="/admin/uploads" className="nav-link">
             Uploads
           </a>

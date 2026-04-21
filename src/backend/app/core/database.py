@@ -30,7 +30,7 @@ def check_database_health(database_url: str | None) -> DatabaseHealth:
                     text("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')")
                 ).scalar_one()
             )
-    except SQLAlchemyError as exc:
+    except (SQLAlchemyError, ModuleNotFoundError, ImportError) as exc:
         return DatabaseHealth(
             database_available=False,
             pgvector_available=False,

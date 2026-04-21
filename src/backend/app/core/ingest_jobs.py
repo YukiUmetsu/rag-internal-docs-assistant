@@ -12,10 +12,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.backend.app.core.queue import celery_app
-from src.backend.app.core.corpus import (
-    collect_prepared_sources,
-    persist_prepared_sources,
-)
 from src.backend.app.core.uploads import (
     get_uploaded_file,
     _insert_ingest_job_upload_links,
@@ -300,6 +296,8 @@ def document_ingest_job(job_id: str) -> dict[str, Any]:
     job = get_ingest_job(settings.database_url, job_id)
 
     try:
+        from src.backend.app.core.corpus import collect_prepared_sources, persist_prepared_sources
+
         prepared_sources = collect_prepared_sources(
             settings.database_url,
             requested_paths=job.requested_paths,

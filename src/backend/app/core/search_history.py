@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -9,6 +8,7 @@ from typing import Any
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from src.backend.app.core.request_ids import generate_request_id
 from src.backend.app.schemas.retrieval import RetrievalMetadata
 from src.backend.app.schemas.retrieval import Source
 
@@ -43,6 +43,7 @@ class SearchHistoryDetail(SearchHistorySummary):
 def persist_search_history(
     database_url: str | None,
     *,
+    history_id: str | None = None,
     request_kind: str,
     question: str,
     requested_mode: str,
@@ -56,7 +57,7 @@ def persist_search_history(
     if not database_url:
         return None
 
-    history_id = str(uuid.uuid4())
+    history_id = history_id or generate_request_id()
     now = datetime.now(timezone.utc)
     source_files = [source.file_name for source in sources]
     unique_source_count = len(set(source_files))
@@ -171,7 +172,19 @@ def persist_search_history(
                     ],
                 )
     except SQLAlchemyError as exc:
-        logger.warning("Failed to persist search history: %s", exc)
+        logger.warning(
+            (
+                "Failed to persist search history "
+                "(history_id=%s request_kind=%s requested_mode=%s mode_used=%s question=%r): %s"
+            ),
+            history_id,
+            request_kind,
+            requested_mode,
+            mode_used,
+            question,
+            exc,
+            exc_info=True,
+        )
         return None
 
     return history_id

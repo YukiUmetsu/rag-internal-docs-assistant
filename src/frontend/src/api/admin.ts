@@ -7,6 +7,8 @@ import type {
   AdminRetrieverBackendResponse,
   AdminUploadSortKey,
   AdminUploadStat,
+  FeedbackReviewStatus,
+  FeedbackSummary,
   RetrieverBackend,
   SortDirection,
   IngestJobDetail,
@@ -92,4 +94,17 @@ export function listAdminJobs(query: AdminJobsQuery): Promise<AdminPaginatedResp
 
 export function getAdminJobDetail(jobId: string): Promise<IngestJobDetail> {
   return requestJson<IngestJobDetail>(`/api/admin/jobs/${jobId}`);
+}
+
+export function listAdminFeedback(query: {
+  limit?: number;
+  offset?: number;
+  reviewStatus?: FeedbackReviewStatus;
+}): Promise<AdminPaginatedResponse<FeedbackSummary>> {
+  const queryString = buildQueryString({
+    limit: query.limit,
+    offset: query.offset,
+    review_status: query.reviewStatus,
+  });
+  return requestJson<AdminPaginatedResponse<FeedbackSummary>>(`/api/admin/feedback${queryString}`);
 }

@@ -30,6 +30,7 @@ class RetrieveRequest(BaseModel):
 
 
 class RetrieveResponse(BaseModel):
+    request_id: str | None = None
     sources: list[Source]
     retrieval: RetrievalMetadata
     mode_used: Literal["retrieve_only"]

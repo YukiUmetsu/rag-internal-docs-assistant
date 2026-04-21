@@ -26,6 +26,7 @@ export type ChatRequest = {
 };
 
 export type ChatResponse = {
+  request_id: string | null;
   answer: string;
   sources: Source[];
   retrieval: RetrievalMetadata;
@@ -35,6 +36,7 @@ export type ChatResponse = {
 };
 
 export type RetrieveResponse = {
+  request_id: string | null;
   sources: Source[];
   retrieval: RetrievalMetadata;
   mode_used: "retrieve_only";
@@ -161,6 +163,44 @@ export type AdminPaginatedResponse<T> = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type FeedbackVerdict = "helpful" | "not_helpful" | "partially_helpful";
+export type FeedbackReasonCode = "grounding" | "retrieval" | "abstain" | "tone" | "policy" | "other";
+export type FeedbackReviewStatus = "new" | "triaged" | "promoted" | "ignored";
+
+export type FeedbackSummary = {
+  id: string;
+  search_query_id: string;
+  request_kind: string;
+  question: string;
+  verdict: FeedbackVerdict;
+  reason_code: FeedbackReasonCode;
+  issue_category: string;
+  review_status: FeedbackReviewStatus;
+  comment_preview: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
+export type FeedbackDetail = FeedbackSummary & {
+  comment: string | null;
+  reviewed_by: string | null;
+  promoted_eval_path: string | null;
+  langsmith_run_id: string | null;
+};
+
+export type FeedbackCreateRequest = {
+  search_query_id: string;
+  verdict: FeedbackVerdict;
+  reason_code: FeedbackReasonCode;
+  comment?: string | null;
+};
+
+export type FeedbackReviewUpdateRequest = {
+  review_status: FeedbackReviewStatus;
+  reviewed_by?: string | null;
+  promoted_eval_path?: string | null;
 };
 
 export type AdminRetrieverBackendResponse = {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { sendChat } from "./api/client";
 import type { ChatResponse, RequestMode } from "./api/types";
 import { AdminDashboard } from "./components/AdminDashboard";
+import { AdminFeedback } from "./components/AdminFeedback";
 import { AdminIngestJobs } from "./components/AdminIngestJobs";
 import { AdminUploads } from "./components/AdminUploads";
 import { AnswerPanel } from "./components/AnswerPanel";
@@ -19,6 +20,10 @@ export default function App() {
 
   if (pathname.startsWith("/admin/uploads")) {
     return <AdminUploads />;
+  }
+
+  if (pathname.startsWith("/admin/feedback")) {
+    return <AdminFeedback />;
   }
 
   if (pathname.startsWith("/admin")) {

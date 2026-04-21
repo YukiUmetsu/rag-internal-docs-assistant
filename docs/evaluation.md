@@ -87,3 +87,20 @@ That spec defines:
 - answer-level groundedness formulas
 - heuristic and judge-based scoring modes
 - the release gates I would use for a production-style RAG demo
+
+## Feedback Loop
+
+User feedback is attached to the same request identifier used by search history
+and tracing. The feedback record stores:
+
+- the request kind
+- the user verdict
+- a normalized reason code
+- the free-text comment
+- the review status
+
+Reviewed feedback can be promoted into candidate eval rows, keeping production
+traffic and regression data connected through the same request anchor.
+
+The export helper writes reviewed feedback into `evals/feedback_candidates.yaml`
+for human curation before the rows are merged into a gold set.

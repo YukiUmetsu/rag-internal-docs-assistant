@@ -4,12 +4,52 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from celery import Celery
-from celery.result import AsyncResult
-from redis import Redis
-from redis.exceptions import RedisError
-
 from src.backend.app.core.settings import get_settings
+
+try:  # pragma: no cover - optional dependency fallback
+    from celery import Celery
+    from celery.result import AsyncResult
+except ImportError:  # pragma: no cover - exercised when Celery is unavailable
+    Celery = None  # type: ignore[assignment]
+    AsyncResult = None  # type: ignore[assignment]
+
+try:  # pragma: no cover - optional dependency fallback
+    from redis import Redis
+    from redis.exceptions import RedisError
+except ImportError:  # pragma: no cover - exercised when Redis is unavailable
+    Redis = None  # type: ignore[assignment]
+
+    class RedisError(Exception):
+        pass
+
+
+class _FallbackTask:
+    def __init__(self, func):
+        self._func = func
+
+    def __call__(self, *args: Any, **kwargs: Any):
+        return self._func(*args, **kwargs)
+
+    def delay(self, *_args: Any, **_kwargs: Any) -> Any:
+        raise RuntimeError("Celery is not installed")
+
+    def apply_async(self, *_args: Any, **_kwargs: Any) -> Any:
+        raise RuntimeError("Celery is not installed")
+
+
+class _FallbackControl:
+    def inspect(self, timeout: int = 1) -> None:
+        return None
+
+
+class _FallbackCeleryApp:
+    control = _FallbackControl()
+
+    def task(self, *args: Any, **kwargs: Any):
+        def decorator(func):
+            return _FallbackTask(func)
+
+        return decorator
 
 
 @dataclass(frozen=True)
@@ -34,6 +74,8 @@ class DiagnosticTaskStatus:
 
 
 def create_celery_app() -> Celery:
+    if Celery is None:
+        raise RuntimeError("Celery is not installed")
     settings = get_settings()
     broker_url = settings.celery_broker_url or settings.redis_url or "redis://redis:6379/0"
     result_backend = settings.celery_result_backend or settings.redis_url or "redis://redis:6379/1"
@@ -55,7 +97,7 @@ def create_celery_app() -> Celery:
     return app
 
 
-celery_app = create_celery_app()
+celery_app = create_celery_app() if Celery is not None else _FallbackCeleryApp()
 
 
 @celery_app.task(name="diagnostics.ping")
@@ -68,11 +110,15 @@ def diagnostic_ping(message: str = "pong") -> dict[str, str]:
 
 
 def enqueue_diagnostic_task(message: str = "pong") -> str:
+    if AsyncResult is None:
+        raise RuntimeError("Celery is not installed")
     result = diagnostic_ping.delay(message)
     return result.id
 
 
 def get_diagnostic_task_status(task_id: str) -> DiagnosticTaskStatus:
+    if AsyncResult is None:
+        raise RuntimeError("Celery is not installed")
     result = AsyncResult(task_id, app=celery_app)
     payload = result.result if result.ready() else None
     if isinstance(payload, BaseException):
@@ -89,6 +135,8 @@ def get_diagnostic_task_status(task_id: str) -> DiagnosticTaskStatus:
 def check_redis_health(redis_url: str | None) -> RedisHealth:
     if not redis_url:
         return RedisHealth(available=False, error="REDIS_URL is not configured")
+    if Redis is None:
+        return RedisHealth(available=False, error="Redis is not installed")
 
     try:
         client = Redis.from_url(

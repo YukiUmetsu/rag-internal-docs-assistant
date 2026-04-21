@@ -185,6 +185,9 @@ export function AdminDashboard() {
           <a href="/admin" className="nav-link is-active">
             Dashboard
           </a>
+          <a href="/admin/feedback" className="nav-link">
+            Feedback
+          </a>
           <a href="/admin/uploads" className="nav-link">
             Uploads
           </a>

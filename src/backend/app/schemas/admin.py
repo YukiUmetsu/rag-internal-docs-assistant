@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from src.backend.app.schemas.documents import SourceDocumentDetail, SourceDocumentSummary
+from src.backend.app.schemas.feedback import FeedbackSummary
 from src.backend.app.schemas.ingest_jobs import IngestJobSummary
 from src.backend.app.schemas.search_history import SearchHistorySummary
 
@@ -113,6 +114,13 @@ class AdminPaginatedDocuments(BaseModel):
 
 class AdminPaginatedHistory(BaseModel):
     items: list[SearchHistorySummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminPaginatedFeedback(BaseModel):
+    items: list[FeedbackSummary]
     total: int
     limit: int
     offset: int

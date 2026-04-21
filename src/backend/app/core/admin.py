@@ -7,7 +7,6 @@ from typing import Any
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.backend.app.core.corpus import count_active_corpus_rows, verify_corpus_integrity
 from src.backend.app.core.documents import (
     SourceDocumentDetail,
     SourceDocumentSummary,
@@ -165,6 +164,8 @@ def get_admin_dashboard(
 ) -> AdminDashboardSnapshot:
     if not database_url:
         raise RuntimeError("DATABASE_URL is not configured")
+
+    from src.backend.app.core.corpus import count_active_corpus_rows, verify_corpus_integrity
 
     backend_state = get_admin_retriever_backend(database_url, retriever_backend)
     corpus_report = verify_corpus_integrity(database_url)

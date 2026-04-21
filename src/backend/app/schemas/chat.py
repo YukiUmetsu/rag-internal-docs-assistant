@@ -14,6 +14,7 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    request_id: str | None = None
     answer: str
     sources: list[Source]
     retrieval: RetrievalMetadata

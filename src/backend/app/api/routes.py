@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import cgi
+import io
+import logging
 from dataclasses import asdict
+from types import SimpleNamespace
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
 
 from src.backend.app.core.admin import (
     get_admin_dashboard,
@@ -24,6 +28,7 @@ from src.backend.app.core.ingest_jobs import (
     get_ingest_job,
     list_ingest_jobs,
 )
+from src.backend.app.core.request_ids import generate_request_id
 from src.backend.app.core.settings import get_settings, path_exists
 from src.backend.app.core.uploads import UploadTooLargeError, store_uploaded_files
 from src.backend.app.core.queue import (
@@ -45,6 +50,7 @@ from src.backend.app.schemas.async_tasks import (
 from src.backend.app.schemas.admin import (
     AdminDashboardResponse,
     AdminDocumentResponse,
+    AdminPaginatedFeedback,
     AdminPaginatedDocuments,
     AdminPaginatedHistory,
     AdminPaginatedJobs,
@@ -54,15 +60,54 @@ from src.backend.app.schemas.admin import (
     AdminJobStat,
     AdminUploadStat,
 )
+from src.backend.app.schemas.feedback import (
+    FeedbackCreateRequest,
+    FeedbackDetail,
+    FeedbackReviewUpdateRequest,
+    FeedbackReviewStatus,
+    FeedbackSummary,
+)
 from src.backend.app.schemas.documents import SourceDocumentSummary
 from src.backend.app.schemas.ingest_jobs import IngestJobCreateRequest, IngestJobDetail, IngestJobSummary
 from src.backend.app.schemas.uploads import UploadedFileSummary
 from src.backend.app.schemas.search_history import SearchHistoryDetail, SearchHistorySummary
 from src.backend.app.schemas.retrieval import HealthResponse, RetrieveRequest, RetrieveResponse
 from src.backend.app.services.rag_service import chat, retrieve_only
+from src.backend.app.core.feedback import (
+    list_answer_feedback,
+    persist_answer_feedback,
+    update_answer_feedback_review,
+)
 
 
 router = APIRouter(prefix="/api")
+logger = logging.getLogger(__name__)
+
+
+def _feedback_route_context(
+    *,
+    endpoint: str,
+    feedback_id: str | None = None,
+    search_query_id: str | None = None,
+    verdict: str | None = None,
+    reason_code: str | None = None,
+    review_status: str | None = None,
+    reviewed_by: str | None = None,
+    promoted_eval_path: str | None = None,
+) -> str:
+    return (
+        "endpoint=%s feedback_id=%s search_query_id=%s verdict=%s reason_code=%s review_status=%s reviewed_by=%s promoted_eval_path=%s"
+        % (
+            endpoint,
+            feedback_id or "<none>",
+            search_query_id or "<none>",
+            verdict or "<none>",
+            reason_code or "<none>",
+            review_status or "<none>",
+            reviewed_by or "<none>",
+            promoted_eval_path or "<none>",
+        )
+    )
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -294,12 +339,14 @@ def admin_history_detail_endpoint(query_id: str) -> SearchHistoryDetail:
 
 @router.post("/retrieve", response_model=RetrieveResponse)
 def retrieve_endpoint(request: RetrieveRequest) -> RetrieveResponse:
-    return retrieve_only(request)
+    request_id = generate_request_id()
+    return retrieve_only(request, request_id=request_id, langsmith_extra={"run_id": request_id})
 
 
 @router.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest) -> ChatResponse:
-    return chat(request)
+    request_id = generate_request_id()
+    return chat(request, request_id=request_id, langsmith_extra={"run_id": request_id})
 
 
 @router.get("/search-history", response_model=list[SearchHistorySummary])
@@ -321,6 +368,129 @@ def search_history_detail_endpoint(query_id: str) -> SearchHistoryDetail:
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Search history entry not found") from exc
     except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/feedback", response_model=FeedbackDetail, status_code=201)
+def create_feedback_endpoint(request: FeedbackCreateRequest) -> FeedbackDetail:
+    settings = get_settings()
+    try:
+        feedback = persist_answer_feedback(
+            settings.database_url,
+            search_query_id=request.search_query_id,
+            verdict=request.verdict,
+            reason_code=request.reason_code,
+            comment=request.comment,
+        )
+        if feedback is None:
+            raise RuntimeError("Feedback persistence is unavailable")
+        return FeedbackDetail(**feedback.__dict__)
+    except KeyError as exc:
+        logger.warning(
+            "Feedback submission failed because the search history entry was missing (%s)",
+            _feedback_route_context(
+                endpoint="create_feedback",
+                search_query_id=request.search_query_id,
+                verdict=request.verdict,
+                reason_code=request.reason_code,
+            ),
+            exc_info=True,
+        )
+        raise HTTPException(status_code=404, detail="Search history entry not found") from exc
+    except RuntimeError as exc:
+        logger.warning(
+            "Feedback submission failed at the API boundary (%s): %s",
+            _feedback_route_context(
+                endpoint="create_feedback",
+                search_query_id=request.search_query_id,
+                verdict=request.verdict,
+                reason_code=request.reason_code,
+            ),
+            exc,
+            exc_info=True,
+        )
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/admin/feedback", response_model=AdminPaginatedFeedback)
+def admin_feedback_endpoint(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    review_status: FeedbackReviewStatus | None = Query(default=None),
+) -> AdminPaginatedFeedback:
+    settings = get_settings()
+    try:
+        items, total = list_answer_feedback(
+            settings.database_url,
+            limit=limit,
+            offset=offset,
+            review_status=review_status,
+        )
+        return AdminPaginatedFeedback(
+            items=[FeedbackSummary(**item.__dict__) for item in items],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.patch("/admin/feedback/{feedback_id}", response_model=FeedbackDetail)
+def update_admin_feedback_endpoint(
+    feedback_id: str,
+    request: FeedbackReviewUpdateRequest,
+) -> FeedbackDetail:
+    settings = get_settings()
+    try:
+        feedback = update_answer_feedback_review(
+            settings.database_url,
+            feedback_id,
+            review_status=request.review_status,
+            reviewed_by=request.reviewed_by,
+            promoted_eval_path=request.promoted_eval_path,
+        )
+        return FeedbackDetail(**feedback.__dict__)
+    except KeyError as exc:
+        logger.warning(
+            "Admin feedback triage failed because the feedback row was missing (%s)",
+            _feedback_route_context(
+                endpoint="update_admin_feedback",
+                feedback_id=feedback_id,
+                review_status=request.review_status,
+                reviewed_by=request.reviewed_by,
+                promoted_eval_path=request.promoted_eval_path,
+            ),
+            exc_info=True,
+        )
+        raise HTTPException(status_code=404, detail="Feedback entry not found") from exc
+    except ValueError as exc:
+        logger.warning(
+            "Admin feedback triage rejected an invalid transition (%s): %s",
+            _feedback_route_context(
+                endpoint="update_admin_feedback",
+                feedback_id=feedback_id,
+                review_status=request.review_status,
+                reviewed_by=request.reviewed_by,
+                promoted_eval_path=request.promoted_eval_path,
+            ),
+            exc,
+            exc_info=True,
+        )
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        logger.warning(
+            "Admin feedback triage failed at the API boundary (%s): %s",
+            _feedback_route_context(
+                endpoint="update_admin_feedback",
+                feedback_id=feedback_id,
+                review_status=request.review_status,
+                reviewed_by=request.reviewed_by,
+                promoted_eval_path=request.promoted_eval_path,
+            ),
+            exc,
+            exc_info=True,
+        )
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
@@ -370,9 +540,10 @@ def create_ingest_job(request: IngestJobCreateRequest) -> IngestJobDetail:
 
 
 @router.post("/ingest/uploads", response_model=list[UploadedFileSummary], status_code=201)
-def upload_ingest_files(files: list[UploadFile] = File(...)) -> list[UploadedFileSummary]:
+async def upload_ingest_files(request: Request) -> list[UploadedFileSummary]:
     settings = get_settings()
     try:
+        files = await _extract_uploaded_files(request)
         _validate_upload_file_types(files)
         uploaded_files = store_uploaded_files(
             settings.database_url,
@@ -420,3 +591,48 @@ def _validate_upload_file_types(files: list[UploadFile]) -> None:
     ]
     if invalid_files:
         raise ValueError(f"Unsupported upload file type(s): {', '.join(invalid_files)}")
+
+
+async def _extract_uploaded_files(request: Request) -> list[UploadFile]:
+    try:
+        form = await request.form()
+        files = [
+            file
+            for file in form.getlist("files")
+            if isinstance(file, UploadFile) and file.filename
+        ]
+        if files:
+            return files
+    except (AssertionError, RuntimeError):
+        pass
+
+    body = await request.body()
+    content_type = request.headers.get("content-type", "")
+    if "multipart/form-data" not in content_type.lower():
+        return []
+
+    environ = {
+        "REQUEST_METHOD": request.method,
+        "CONTENT_TYPE": content_type,
+        "CONTENT_LENGTH": str(len(body)),
+    }
+    field_storage = cgi.FieldStorage(
+        fp=io.BytesIO(body),
+        environ=environ,
+        keep_blank_values=True,
+    )
+    extracted_files: list[UploadFile] = []
+    for item in getattr(field_storage, "list", []) or []:
+        if getattr(item, "name", None) != "files":
+            continue
+        filename = getattr(item, "filename", None)
+        if not filename:
+            continue
+        extracted_files.append(
+            SimpleNamespace(
+                filename=filename,
+                file=io.BytesIO(item.file.read()),
+                content_type=getattr(item, "type", None),
+            )
+        )
+    return extracted_files
