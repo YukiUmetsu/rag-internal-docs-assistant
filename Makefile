@@ -319,12 +319,12 @@ docker-logs:
 docker-test:
 	$(DOCKER_COMPOSE) build api worker
 	$(DOCKER_COMPOSE) up -d postgres redis worker
-	$(DOCKER_COMPOSE) run --rm api python -m pytest
+	$(DOCKER_COMPOSE) run --rm -T api python -m pytest
 
 docker-unit-test:
 	$(DOCKER_COMPOSE) build api worker
 	$(DOCKER_COMPOSE) up -d postgres redis worker
-	$(DOCKER_COMPOSE) run --rm api python -m pytest tests/unit
+	$(DOCKER_COMPOSE) run --rm -T api python -m pytest tests/unit
 	$(NPM) --prefix src/frontend test
 
 docker-migrate:
