@@ -52,12 +52,6 @@ class _FakeConnection:
         sql = str(statement)
         self.executed_sql.append(sql)
 
-        if sql.lstrip().startswith("CREATE TABLE IF NOT EXISTS answer_feedback"):
-            return _FakeResult(None)
-
-        if sql.lstrip().startswith("CREATE INDEX IF NOT EXISTS ix_answer_feedback"):
-            return _FakeResult(None)
-
         if "SELECT request_kind, question" in sql:
             return _FakeResult(
                 {
@@ -215,6 +209,11 @@ def test_persist_answer_feedback_builds_detail_without_reload() -> None:
     assert feedback.search_query_id == "request-123"
     assert feedback.question == "How do duplicate refunds work?"
     assert feedback.comment_preview == "Too vague"
+    assert not any(
+        sql.lstrip().startswith("CREATE TABLE IF NOT EXISTS answer_feedback")
+        or sql.lstrip().startswith("CREATE INDEX IF NOT EXISTS ix_answer_feedback")
+        for sql in engine.connection.executed_sql
+    )
     assert not any("FROM answer_feedback af" in sql for sql in engine.connection.executed_sql)
 
 

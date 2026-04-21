@@ -11,58 +11,39 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "answer_feedback",
-        sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column(
-            "search_query_id",
-            sa.String(length=36),
-            sa.ForeignKey("search_queries.id", ondelete="CASCADE"),
-            nullable=False,
-            unique=True,
-        ),
-        sa.Column("langsmith_run_id", sa.String(length=64), nullable=True),
-        sa.Column("request_kind", sa.String(length=32), nullable=False),
-        sa.Column("verdict", sa.String(length=32), nullable=False),
-        sa.Column("reason_code", sa.String(length=32), nullable=False),
-        sa.Column("issue_category", sa.String(length=32), nullable=False),
-        sa.Column("comment", sa.Text(), nullable=True),
-        sa.Column("review_status", sa.String(length=32), nullable=False, server_default=sa.text("'new'")),
-        sa.Column("reviewed_by", sa.String(length=120), nullable=True),
-        sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("promoted_eval_path", sa.Text(), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS answer_feedback (
+            id VARCHAR(36) PRIMARY KEY,
+            search_query_id VARCHAR(36) NOT NULL UNIQUE REFERENCES search_queries(id) ON DELETE CASCADE,
+            langsmith_run_id VARCHAR(64),
+            request_kind VARCHAR(32) NOT NULL,
+            verdict VARCHAR(32) NOT NULL,
+            reason_code VARCHAR(32) NOT NULL,
+            issue_category VARCHAR(32) NOT NULL,
+            comment TEXT,
+            review_status VARCHAR(32) NOT NULL DEFAULT 'new',
+            reviewed_by VARCHAR(120),
+            reviewed_at TIMESTAMP WITH TIME ZONE,
+            promoted_eval_path TEXT,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+        )
+        """
     )
-    op.create_index(
-        "ix_answer_feedback_created_at",
-        "answer_feedback",
-        ["created_at"],
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_answer_feedback_created_at ON answer_feedback (created_at)"
     )
-    op.create_index(
-        "ix_answer_feedback_issue_category",
-        "answer_feedback",
-        ["issue_category"],
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_answer_feedback_issue_category ON answer_feedback (issue_category)"
     )
-    op.create_index(
-        "ix_answer_feedback_review_status",
-        "answer_feedback",
-        ["review_status"],
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_answer_feedback_review_status ON answer_feedback (review_status)"
     )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_answer_feedback_review_status", table_name="answer_feedback")
-    op.drop_index("ix_answer_feedback_issue_category", table_name="answer_feedback")
-    op.drop_index("ix_answer_feedback_created_at", table_name="answer_feedback")
-    op.drop_table("answer_feedback")
+    op.execute("DROP INDEX IF EXISTS ix_answer_feedback_review_status")
+    op.execute("DROP INDEX IF EXISTS ix_answer_feedback_issue_category")
+    op.execute("DROP INDEX IF EXISTS ix_answer_feedback_created_at")
+    op.execute("DROP TABLE IF EXISTS answer_feedback")

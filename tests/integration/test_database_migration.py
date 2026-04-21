@@ -19,6 +19,7 @@ def test_pgvector_migration_applies_and_extension_exists() -> None:
     alembic_ini_path = Path(__file__).resolve().parents[2] / "alembic.ini"
     config = Config(str(alembic_ini_path))
     command.upgrade(config, "head")
+    command.upgrade(config, "head")
 
     engine = create_engine(database_url, pool_pre_ping=True)
     with engine.connect() as connection:

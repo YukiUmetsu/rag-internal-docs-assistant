@@ -36,30 +36,6 @@ ALLOWED_REVIEW_TRANSITIONS: dict[str, set[str]] = {
     "ignored": {"new"},
 }
 
-FEEDBACK_SCHEMA_STATEMENTS: tuple[str, ...] = (
-    """
-    CREATE TABLE IF NOT EXISTS answer_feedback (
-        id VARCHAR(36) PRIMARY KEY,
-        search_query_id VARCHAR(36) NOT NULL UNIQUE REFERENCES search_queries(id) ON DELETE CASCADE,
-        langsmith_run_id VARCHAR(64),
-        request_kind VARCHAR(32) NOT NULL,
-        verdict VARCHAR(32) NOT NULL,
-        reason_code VARCHAR(32) NOT NULL,
-        issue_category VARCHAR(32) NOT NULL,
-        comment TEXT,
-        review_status VARCHAR(32) NOT NULL DEFAULT 'new',
-        reviewed_by VARCHAR(120),
-        reviewed_at TIMESTAMP WITH TIME ZONE,
-        promoted_eval_path TEXT,
-        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS ix_answer_feedback_created_at ON answer_feedback (created_at)",
-    "CREATE INDEX IF NOT EXISTS ix_answer_feedback_issue_category ON answer_feedback (issue_category)",
-    "CREATE INDEX IF NOT EXISTS ix_answer_feedback_review_status ON answer_feedback (review_status)",
-)
-
 REVIEW_STATUS_PRIORITY: dict[str, int] = {
     "new": 0,
     "promoted": 1,
@@ -89,11 +65,6 @@ class FeedbackDetail(FeedbackSummary):
     reviewed_by: str | None
     promoted_eval_path: str | None
     langsmith_run_id: str | None
-
-
-def _ensure_feedback_schema(connection: Connection) -> None:
-    for statement in FEEDBACK_SCHEMA_STATEMENTS:
-        connection.execute(text(statement))
 
 
 def _feedback_context(
@@ -385,7 +356,6 @@ def persist_answer_feedback(
     try:
         engine = create_engine(database_url, pool_pre_ping=True)
         with engine.begin() as connection:
-            _ensure_feedback_schema(connection)
             request_row = _load_search_history_row(connection, search_query_id)
             logger.debug(
                 "Loaded search history row for answer feedback (%s request_kind=%s)",
@@ -494,7 +464,6 @@ def list_answer_feedback(
 
     try:
         with engine.connect() as connection:
-            _ensure_feedback_schema(connection)
             count_row = connection.execute(
                 text(
                     f"""
@@ -557,7 +526,6 @@ def get_answer_feedback_entry(database_url: str | None, feedback_id: str) -> Fee
     engine = create_engine(database_url, pool_pre_ping=True)
     try:
         with engine.connect() as connection:
-            _ensure_feedback_schema(connection)
             row = _load_feedback_detail_row(connection, feedback_id)
     except SQLAlchemyError as exc:
         raise RuntimeError(str(exc)) from exc
@@ -587,7 +555,6 @@ def update_answer_feedback_review(
     engine = create_engine(database_url, pool_pre_ping=True)
     try:
         with engine.begin() as connection:
-            _ensure_feedback_schema(connection)
             current_row = _load_feedback_detail_row(connection, feedback_id)
             current_status = str(current_row["review_status"])
             if review_status not in ALLOWED_REVIEW_TRANSITIONS.get(current_status, set()):

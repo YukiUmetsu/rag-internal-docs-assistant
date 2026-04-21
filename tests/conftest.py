@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -33,6 +34,29 @@ def test_env() -> None:
     os.environ.setdefault("VECTORSTORE_PATH", str(TESTS_ROOT / ".tmp" / "default_faiss_index"))
     os.environ["RETRIEVER_BACKEND"] = "faiss"
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def reset_backend_logging_state() -> None:
+    """
+    Keep backend loggers in a predictable state across the full suite.
+
+    Some tests or imported modules can mutate logging globals, which can make
+    later caplog assertions flaky when the entire suite runs together.
+    """
+    logging.disable(logging.NOTSET)
+    for logger_name in (
+        "src.backend.app.api.admin_routes",
+        "src.backend.app.api.public_routes",
+        "src.backend.app.core.feedback",
+        "src.backend.app.core.search_history",
+        "src.backend.app.core.uploads",
+    ):
+        logger = logging.getLogger(logger_name)
+        logger.disabled = False
+        logger.propagate = True
+        logger.setLevel(logging.NOTSET)
+    yield
 
 
 @pytest.fixture

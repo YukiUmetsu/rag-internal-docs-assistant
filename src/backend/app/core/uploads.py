@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-from fastapi import UploadFile
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.datastructures import UploadFile
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -41,7 +45,6 @@ def store_uploaded_files(
     uploads_root.mkdir(parents=True, exist_ok=True)
 
     staged_files: list[dict[str, Any]] = []
-    final_paths: list[Path] = []
     try:
         for upload_file in files:
             staged_files.append(
@@ -51,11 +54,15 @@ def store_uploaded_files(
                     max_upload_file_size_bytes=max_upload_file_size_bytes,
                 )
             )
-        for staged_file in staged_files:
-            staged_file["temp_path"].replace(staged_file["final_path"])
-            final_paths.append(staged_file["final_path"])
         stored_files = _insert_uploaded_file_rows(database_url, staged_files)
     except Exception:
+        logger.warning(
+            "Failed to stage or persist uploaded files (upload_count=%s uploads_path=%s)",
+            len(staged_files),
+            uploads_path,
+            exc_info=True,
+        )
+        final_paths = [staged_file["final_path"] for staged_file in staged_files]
         for path in final_paths:
             path.unlink(missing_ok=True)
         for staged_file in staged_files:
@@ -238,7 +245,20 @@ def _insert_uploaded_file_rows(
     engine = create_engine(database_url, pool_pre_ping=True)
     try:
         with engine.begin() as connection:
+            stored_files: list[UploadedFileSummary] = []
             for staged_file in staged_files:
+                existing_row = _load_uploaded_file_by_checksum(connection, str(staged_file["checksum"]))
+                if existing_row is not None:
+                    logger.debug(
+                        "Reusing uploaded file with existing checksum=%s original_filename=%s",
+                        staged_file["checksum"],
+                        staged_file["original_filename"],
+                    )
+                    staged_file["temp_path"].unlink(missing_ok=True)
+                    stored_files.append(_summary_from_row(existing_row))
+                    continue
+
+                staged_file["temp_path"].replace(staged_file["final_path"])
                 connection.execute(
                     text(
                         """
@@ -274,22 +294,55 @@ def _insert_uploaded_file_rows(
                         "updated_at": staged_file["updated_at"],
                     },
                 )
+                stored_files.append(
+                    UploadedFileSummary(
+                        id=str(staged_file["id"]),
+                        original_filename=str(staged_file["original_filename"]),
+                        stored_path=str(staged_file["stored_path"]),
+                        content_type=staged_file["content_type"],
+                        file_size_bytes=int(staged_file["file_size_bytes"]),
+                        checksum=str(staged_file["checksum"]),
+                        created_at=staged_file["created_at"],
+                        updated_at=staged_file["updated_at"],
+                    )
+                )
     except SQLAlchemyError as exc:
+        logger.warning(
+            (
+                "Failed to persist uploaded file rows "
+                "(upload_count=%s checksums=%s filenames=%s): %s"
+            ),
+            len(staged_files),
+            [staged_file["checksum"] for staged_file in staged_files],
+            [staged_file["original_filename"] for staged_file in staged_files],
+            exc,
+            exc_info=True,
+        )
         raise RuntimeError(str(exc)) from exc
 
-    return [
-        UploadedFileSummary(
-            id=str(staged_file["id"]),
-            original_filename=str(staged_file["original_filename"]),
-            stored_path=str(staged_file["stored_path"]),
-            content_type=staged_file["content_type"],
-            file_size_bytes=int(staged_file["file_size_bytes"]),
-            checksum=str(staged_file["checksum"]),
-            created_at=staged_file["created_at"],
-            updated_at=staged_file["updated_at"],
-        )
-        for staged_file in staged_files
-    ]
+    return stored_files
+
+
+def _load_uploaded_file_by_checksum(connection: Connection, checksum: str) -> dict[str, Any] | None:
+    row = connection.execute(
+        text(
+            """
+            SELECT
+                id,
+                original_filename,
+                stored_path,
+                content_type,
+                file_size_bytes,
+                checksum,
+                created_at,
+                updated_at
+            FROM uploaded_files
+            WHERE checksum = :checksum
+            """
+        ),
+        {"checksum": checksum},
+    ).mappings().first()
+    return dict(row) if row is not None else None
 
 
 def _insert_ingest_job_upload_links(

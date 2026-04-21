@@ -198,7 +198,7 @@ def test_upload_endpoint_is_atomic_for_multi_file_batches(tmp_path: Path) -> Non
     )
 
     with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setattr("src.backend.app.api.routes.get_settings", lambda: settings)
+        monkeypatch.setattr("src.backend.app.api.public_routes.get_settings", lambda: settings)
         response = client.post(
             "/api/ingest/uploads",
             files=[

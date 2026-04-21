@@ -214,7 +214,7 @@ def enqueue_validation_ingest_job(
         uploaded_file_ids=normalized_uploaded_file_ids,
     )
     validation_ingest_job.apply_async(args=[job.id], task_id=job.id)
-    return get_ingest_job(database_url, job.id)
+    return job
 
 
 def enqueue_document_ingest_job(
@@ -236,7 +236,7 @@ def enqueue_document_ingest_job(
         uploaded_file_ids=normalized_uploaded_file_ids,
     )
     document_ingest_job.apply_async(args=[job.id], task_id=job.id)
-    return get_ingest_job(database_url, job.id)
+    return job
 
 
 @celery_app.task(name="ingest_jobs.validation")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from uuid import uuid4
 import os
 import time
 from pathlib import Path
@@ -27,9 +28,13 @@ def ensure_admin_schema() -> None:
 
 
 def test_admin_document_and_upload_lists_reflect_recent_ingest() -> None:
+    unique_suffix = uuid4().hex
+    upload_filename = f"admin-ref-{unique_suffix}.md"
+    upload_content = f"# Admin doc {unique_suffix}\n".encode("utf-8")
+
     upload_response = client.post(
         "/api/ingest/uploads",
-        files=[("files", ("admin-ref.md", b"# Admin doc\n", "text/markdown"))],
+        files=[("files", (upload_filename, upload_content, "text/markdown"))],
     )
     assert upload_response.status_code == 201
     upload_id = upload_response.json()[0]["id"]

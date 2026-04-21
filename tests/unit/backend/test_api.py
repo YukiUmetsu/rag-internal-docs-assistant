@@ -45,9 +45,9 @@ def make_doc(file_name: str = "refund_policy_2025.md") -> Document:
 
 def test_health_endpoint_returns_status() -> None:
     with (
-        patch("src.backend.app.api.routes.check_redis_health", return_value=RedisHealth(available=True)),
+        patch("src.backend.app.core.queue.check_redis_health", return_value=RedisHealth(available=True)),
         patch(
-            "src.backend.app.api.routes.check_celery_worker_health",
+            "src.backend.app.core.queue.check_celery_worker_health",
             return_value=CeleryWorkerHealth(available=True),
         ),
     ):
@@ -65,7 +65,7 @@ def test_health_endpoint_returns_status() -> None:
 
 def test_retrieve_endpoint_serializes_sources() -> None:
     with (
-        patch("src.backend.app.api.routes.generate_request_id", return_value="request-123"),
+        patch("src.backend.app.core.request_ids.generate_request_id", return_value="request-123"),
         patch.object(rag_service, "retrieve", return_value=[make_doc()]),
         patch.object(rag_service, "persist_search_history", return_value="request-123"),
     ):
@@ -109,7 +109,7 @@ def test_retrieve_endpoint_still_succeeds_when_history_persistence_fails() -> No
 
 def test_retrieve_endpoint_omits_request_id_when_history_write_returns_none() -> None:
     with (
-        patch("src.backend.app.api.routes.generate_request_id", return_value="request-789"),
+        patch("src.backend.app.core.request_ids.generate_request_id", return_value="request-789"),
         patch.object(rag_service, "retrieve", return_value=[make_doc()]),
         patch.object(rag_service, "persist_search_history", return_value=None),
     ):
@@ -130,7 +130,7 @@ def test_retrieve_endpoint_omits_request_id_when_history_write_returns_none() ->
 
 def test_chat_endpoint_supports_mock_mode() -> None:
     with (
-        patch("src.backend.app.api.routes.generate_request_id", return_value="request-456"),
+        patch("src.backend.app.core.request_ids.generate_request_id", return_value="request-456"),
         patch.object(rag_service, "retrieve", return_value=[make_doc()]),
         patch.object(rag_service, "persist_search_history", return_value="request-456"),
     ):
@@ -249,7 +249,7 @@ def test_feedback_endpoint_serializes_submission() -> None:
         langsmith_run_id="request-123",
     )
     with (
-        patch("src.backend.app.api.routes.persist_answer_feedback", return_value=feedback_record),
+        patch("src.backend.app.core.feedback.persist_answer_feedback", return_value=feedback_record),
     ):
         response = client.post(
             "/api/feedback",
@@ -270,8 +270,8 @@ def test_feedback_endpoint_serializes_submission() -> None:
 
 def test_admin_feedback_update_logs_missing_row(caplog) -> None:
     with (
-        patch("src.backend.app.api.routes.update_answer_feedback_review", side_effect=KeyError("feedback-123")),
-        caplog.at_level(logging.WARNING, logger="src.backend.app.api.routes"),
+        patch("src.backend.app.core.feedback.update_answer_feedback_review", side_effect=KeyError("feedback-123")),
+        caplog.at_level(logging.WARNING, logger="src.backend.app.api.admin_routes"),
     ):
         response = client.patch(
             "/api/admin/feedback/feedback-123",
@@ -292,10 +292,10 @@ def test_admin_feedback_update_logs_missing_row(caplog) -> None:
 def test_admin_feedback_update_logs_runtime_failure(caplog) -> None:
     with (
         patch(
-            "src.backend.app.api.routes.update_answer_feedback_review",
+            "src.backend.app.core.feedback.update_answer_feedback_review",
             side_effect=RuntimeError("db unavailable"),
         ),
-        caplog.at_level(logging.WARNING, logger="src.backend.app.api.routes"),
+        caplog.at_level(logging.WARNING, logger="src.backend.app.api.admin_routes"),
     ):
         response = client.patch(
             "/api/admin/feedback/feedback-123",
@@ -315,10 +315,10 @@ def test_admin_feedback_update_logs_runtime_failure(caplog) -> None:
 def test_admin_feedback_update_rejects_invalid_transition(caplog) -> None:
     with (
         patch(
-            "src.backend.app.api.routes.update_answer_feedback_review",
+            "src.backend.app.core.feedback.update_answer_feedback_review",
             side_effect=ValueError("Cannot transition feedback review status from promoted to promoted"),
         ),
-        caplog.at_level(logging.WARNING, logger="src.backend.app.api.routes"),
+        caplog.at_level(logging.WARNING, logger="src.backend.app.api.admin_routes"),
     ):
         response = client.patch(
             "/api/admin/feedback/feedback-123",
@@ -334,7 +334,7 @@ def test_admin_feedback_update_rejects_invalid_transition(caplog) -> None:
 
 
 def test_celery_ping_endpoint_enqueues_task() -> None:
-    with patch("src.backend.app.api.routes.enqueue_diagnostic_task", return_value="task-123"):
+    with patch("src.backend.app.core.queue.enqueue_diagnostic_task", return_value="task-123"):
         response = client.post(
             "/api/diagnostics/celery/ping",
             json={"message": "ping"},
@@ -348,7 +348,7 @@ def test_celery_ping_endpoint_enqueues_task() -> None:
 
 def test_celery_ping_status_endpoint_serializes_task_state() -> None:
     with patch(
-        "src.backend.app.api.routes.get_diagnostic_task_status",
+        "src.backend.app.core.queue.get_diagnostic_task_status",
         return_value=DiagnosticTaskStatus(
             task_id="task-123",
             state="SUCCESS",
@@ -368,7 +368,7 @@ def test_celery_ping_status_endpoint_serializes_task_state() -> None:
 
 def test_ingest_job_creation_endpoint_serializes_job() -> None:
     with patch(
-        "src.backend.app.api.routes.enqueue_validation_ingest_job",
+        "src.backend.app.core.ingest_jobs.enqueue_validation_ingest_job",
         return_value=IngestJobDetail(
             id="job-123",
             task_id="job-123",
@@ -398,7 +398,7 @@ def test_ingest_job_creation_endpoint_serializes_job() -> None:
 
 def test_ingest_jobs_list_endpoint_serializes_jobs() -> None:
     with patch(
-        "src.backend.app.api.routes.list_ingest_jobs",
+        "src.backend.app.core.ingest_jobs.list_ingest_jobs",
         return_value=[
             IngestJobSummary(
                 id="job-123",
@@ -424,7 +424,7 @@ def test_ingest_jobs_list_endpoint_serializes_jobs() -> None:
 
 def test_ingest_job_detail_endpoint_serializes_job() -> None:
     with patch(
-        "src.backend.app.api.routes.get_ingest_job",
+        "src.backend.app.core.ingest_jobs.get_ingest_job",
         return_value=IngestJobDetail(
             id="job-123",
             task_id="job-123",
@@ -503,7 +503,7 @@ def test_admin_dashboard_endpoint_serializes_snapshot() -> None:
         latest_ingest_at=datetime.fromisoformat("2026-04-15T12:01:00+00:00"),
         latest_failed_ingest_at=None,
     )
-    with patch("src.backend.app.api.routes.get_admin_dashboard", return_value=snapshot):
+    with patch("src.backend.app.core.admin.get_admin_dashboard", return_value=snapshot):
         response = client.get("/api/admin/dashboard")
 
     assert response.status_code == 200
@@ -517,7 +517,7 @@ def test_admin_dashboard_endpoint_serializes_snapshot() -> None:
 
 def test_admin_retriever_backend_endpoint_serializes_state() -> None:
     with patch(
-        "src.backend.app.api.routes.get_admin_retriever_backend",
+        "src.backend.app.core.admin.get_admin_retriever_backend",
         return_value=AdminRetrieverBackendState(retriever_backend="postgres", override_enabled=True),
     ):
         response = client.get("/api/admin/retriever-backend")
@@ -530,7 +530,7 @@ def test_admin_retriever_backend_endpoint_serializes_state() -> None:
 
 def test_admin_retriever_backend_update_endpoint_serializes_state() -> None:
     with patch(
-        "src.backend.app.api.routes.set_admin_retriever_backend",
+        "src.backend.app.core.admin.set_admin_retriever_backend",
         return_value=AdminRetrieverBackendState(retriever_backend="faiss", override_enabled=True),
     ):
         response = client.post(
@@ -546,7 +546,7 @@ def test_admin_retriever_backend_update_endpoint_serializes_state() -> None:
 
 def test_admin_uploads_endpoint_serializes_paged_uploads() -> None:
     with patch(
-        "src.backend.app.api.routes.list_admin_uploads",
+        "src.backend.app.core.admin.list_admin_uploads",
         return_value=(
             [
                 AdminUploadStat(
@@ -572,7 +572,7 @@ def test_admin_uploads_endpoint_serializes_paged_uploads() -> None:
 
 def test_admin_jobs_endpoint_serializes_paged_jobs() -> None:
     with patch(
-        "src.backend.app.api.routes.list_admin_jobs",
+        "src.backend.app.core.admin.list_admin_jobs",
         return_value=(
             [
                 AdminJobStat(
@@ -611,7 +611,7 @@ def test_admin_documents_endpoint_serializes_paged_documents() -> None:
     from src.backend.app.schemas.documents import SourceDocumentSummary
 
     with patch(
-        "src.backend.app.api.routes.list_admin_documents",
+        "src.backend.app.core.admin.list_admin_documents",
         return_value=(
             [
                 SourceDocumentSummary(
@@ -647,7 +647,7 @@ def test_admin_documents_endpoint_serializes_paged_documents() -> None:
 
 def test_admin_history_endpoint_serializes_paged_history() -> None:
     with patch(
-        "src.backend.app.api.routes.list_admin_history",
+        "src.backend.app.core.admin.list_admin_history",
         return_value=(
             [
                 {
@@ -679,7 +679,7 @@ def test_admin_history_endpoint_serializes_paged_history() -> None:
 
 def test_upload_endpoint_serializes_uploaded_files() -> None:
     with patch(
-        "src.backend.app.api.routes.store_uploaded_files",
+        "src.backend.app.core.uploads.store_uploaded_files",
         return_value=[
             UploadedFileRecord(
                 id="upload-123",
