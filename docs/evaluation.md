@@ -85,4 +85,5 @@ That spec defines:
 - a row schema for claim-level evaluation
 - support / conflict / abstain labels
 - answer-level groundedness formulas
+- heuristic and judge-based scoring modes
 - the release gates I would use for a production-style RAG demo

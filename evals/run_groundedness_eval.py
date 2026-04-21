@@ -189,12 +189,95 @@ def claim_support_sources_satisfied(
     return bool(retrieved_source_names & supported_by)
 
 
-def claim_is_triggered(answer: str, claim_text: str, activation_terms: list[str]) -> bool:
-    # Optional claims are scored only when the answer actually makes the claim
-    # or uses one of the configured activation aliases for that claim.
-    if activation_terms:
-        return any(answer_mentions_claim(answer, activation_term) for activation_term in activation_terms)
-    return answer_mentions_claim(answer, claim_text)
+def format_groundedness_context(docs: list[Document]) -> str:
+    # Keep the judge context compact but source-attributed so multi-source
+    # support can be evaluated from the retrieved evidence.
+    parts: list[str] = []
+    for i, doc in enumerate(docs, start=1):
+        source = doc.metadata.get("file_name", "unknown")
+        parts.append(f"[Source {i}] {source}\n{doc.page_content}")
+    return "\n\n".join(parts)
+
+
+def extract_json_object(text: str) -> str:
+    # Judges sometimes wrap JSON in markdown fences. This extracts the first
+    # object so the evaluator can parse the verdict without brittle formatting
+    # assumptions.
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("Judge response did not contain a JSON object")
+    return text[start : end + 1]
+
+
+def parse_judge_verdict(text: str) -> dict[str, Any]:
+    payload = json.loads(extract_json_object(text))
+    label = str(payload.get("label", "")).strip().lower()
+    reason = str(payload.get("reason", "")).strip()
+    if label not in {"supported", "unsupported", "conflicting", "abstained", "skipped"}:
+        raise ValueError(f"Unexpected judge label: {label!r}")
+    return {
+        "label": label,
+        "reason": reason or "judge returned no reason",
+        "confidence": payload.get("confidence"),
+    }
+
+
+def judge_claim(
+    *,
+    answer: str,
+    claim: dict[str, Any],
+    retrieved_docs: list[Document],
+    expected_behavior: str,
+    llm: Any,
+) -> dict[str, Any]:
+    claim_text = str(claim.get("text", ""))
+    supported_by = [
+        str(source).strip()
+        for source in claim.get("supported_by", [])
+        if str(source).strip()
+    ]
+    conflict_with = [
+        str(source).strip()
+        for source in claim.get("conflict_with", [])
+        if str(source).strip()
+    ]
+    prompt = (
+        "You are grading groundedness for a RAG system.\n"
+        "Return strict JSON only with keys: label, reason, confidence.\n"
+        "label must be one of supported, unsupported, conflicting, abstained, skipped.\n"
+        "Use skipped only if the claim is optional and the answer does not make that claim.\n"
+        "Use supported when the answer states the claim and the retrieved context supports it.\n"
+        "Use unsupported when the answer states the claim but the context does not support it.\n"
+        "Use conflicting when the answer states a fact that contradicts the context.\n"
+        "Use abstained when the answer correctly refuses because context is insufficient.\n"
+        "Use multiple retrieved sources together when support is distributed across them.\n"
+        "Do not mention chain-of-thought.\n\n"
+        f"Claim ID: {claim.get('id')}\n"
+        f"Claim text: {claim_text}\n"
+        f"Critical: {bool(claim.get('critical', False))}\n"
+        f"Optional: {bool(claim.get('optional', False))}\n"
+        f"Expected behavior: {expected_behavior}\n"
+        f"Supported by: {supported_by}\n"
+        f"Conflict with: {conflict_with}\n\n"
+        f"Answer:\n{answer}\n\n"
+        f"Retrieved context:\n{format_groundedness_context(retrieved_docs)}\n"
+    )
+
+    response = llm.invoke(
+        prompt,
+        config={
+            "run_name": "groundedness_judge",
+            "tags": ["rag", "evaluation", "judge"],
+            "metadata": {
+                "claim_id": claim.get("id"),
+                "critical": bool(claim.get("critical", False)),
+                "optional": bool(claim.get("optional", False)),
+                "doc_count": len(retrieved_docs),
+            },
+        },
+    )
+    return parse_judge_verdict(getattr(response, "content", str(response)))
 
 
 def score_claim(
@@ -204,6 +287,8 @@ def score_claim(
     retrieved_source_names: set[str],
     retrieved_docs: list[Document],
     expected_behavior: str,
+    judge_mode: str,
+    judge_llm: Any | None,
 ) -> dict[str, Any]:
     claim_text = str(claim.get("text", ""))
     supported_by = {
@@ -221,14 +306,9 @@ def score_claim(
     must_appear_in_answer = bool(claim.get("must_appear_in_answer", True))
     optional = bool(claim.get("optional", False))
     support_mode = str(claim.get("support_mode", "any")).lower()
-    activation_terms = [
-        str(trigger_term).strip()
-        for trigger_term in claim.get("activation_terms", [])
-        if str(trigger_term).strip()
-    ]
-    triggered = claim_is_triggered(answer, claim_text, activation_terms) if optional else True
+    answer_mentions = answer_mentions_claim(answer, claim_text) if must_appear_in_answer else False
 
-    if optional and not triggered:
+    if optional and judge_mode == "heuristic" and not answer_mentions:
         return {
             "id": claim.get("id"),
             "text": claim_text,
@@ -239,7 +319,8 @@ def score_claim(
             "conflict_with": sorted(conflict_with),
             "must_appear_in_answer": must_appear_in_answer,
             "optional": optional,
-            "activation_terms": activation_terms,
+            "judge_mode": judge_mode,
+            "judge_used": False,
             "triggered": False,
             "answer_mentions": False,
             "support_sources_present": False,
@@ -249,9 +330,22 @@ def score_claim(
             "reason": "optional claim not activated by the answer",
         }
 
+    judge_result: dict[str, Any] | None = None
+    if judge_mode in {"judge", "hybrid"} and judge_llm is not None:
+        try:
+            judge_result = judge_claim(
+                answer=answer,
+                claim=claim,
+                retrieved_docs=retrieved_docs,
+                expected_behavior=expected_behavior,
+                llm=judge_llm,
+            )
+        except Exception:
+            if judge_mode == "judge":
+                raise
+
     support_sources_matched = retrieved_source_names & supported_by if supported_by else set()
 
-    answer_mentions = answer_mentions_claim(answer, claim_text) if must_appear_in_answer else False
     # Source support and answer wording are checked separately:
     # retrieval can be correct even when the answer never states the claim.
     support_sources_present = claim_support_sources_satisfied(supported_by, retrieved_source_names, support_mode)
@@ -260,8 +354,12 @@ def score_claim(
 
     label = "unsupported"
     reason = "claim not grounded in the retrieved context"
+    judge_used = judge_result is not None
 
-    if expected_behavior == "abstain" and refusal:
+    if judge_result is not None:
+        label = str(judge_result["label"])
+        reason = str(judge_result["reason"])
+    elif expected_behavior == "abstain" and refusal:
         label = "abstained"
         reason = "answer correctly refused due to insufficient context"
     else:
@@ -308,7 +406,8 @@ def score_claim(
         "conflict_with": sorted(conflict_with),
         "must_appear_in_answer": must_appear_in_answer,
         "optional": optional,
-        "activation_terms": activation_terms,
+        "judge_mode": judge_mode,
+        "judge_used": judge_used,
         "triggered": True,
         "answer_mentions": answer_mentions,
         "support_sources_present": support_sources_present,
@@ -323,6 +422,7 @@ def score_row(
     item: dict[str, Any],
     *,
     answer_mode: str,
+    judge_mode: str,
     vectorstore_path: str,
     chunks_path: str,
     retriever_backend: str | None,
@@ -330,6 +430,7 @@ def score_row(
     initial_k: int,
     max_chunks_per_source: int,
     debug_log_path: str | None,
+    judge_llm: Any | None,
 ) -> dict[str, Any]:
     query_id = item["id"]
     category = item.get("category", "uncategorized")
@@ -392,6 +493,8 @@ def score_row(
             retrieved_source_names=retrieved_source_names,
             retrieved_docs=docs,
             expected_behavior=expected_behavior,
+            judge_mode=judge_mode,
+            judge_llm=judge_llm,
         )
         for claim in claims
     ]
@@ -436,6 +539,7 @@ def score_row(
         "expected_sources": expected_sources,
         "retrieved_sources": get_retrieved_file_names(docs),
         "expected_behavior": expected_behavior,
+        "judge_mode": judge_mode,
         "answer": answer,
         "answer_mode_requested": answer_mode,
         "answer_mode_used": answer_mode_used,
@@ -467,6 +571,7 @@ def evaluate_groundedness(
     gold_queries: list[dict[str, Any]],
     *,
     answer_mode: str,
+    judge_mode: str,
     vectorstore_path: str,
     chunks_path: str,
     retriever_backend: str | None,
@@ -474,6 +579,7 @@ def evaluate_groundedness(
     initial_k: int = 12,
     max_chunks_per_source: int = 2,
     debug_log_path: str | None = None,
+    judge_llm: Any | None = None,
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     category_totals: dict[str, dict[str, float]] = defaultdict(
@@ -510,6 +616,7 @@ def evaluate_groundedness(
         row_result = score_row(
             item,
             answer_mode=answer_mode,
+            judge_mode=judge_mode,
             vectorstore_path=vectorstore_path,
             chunks_path=chunks_path,
             retriever_backend=retriever_backend,
@@ -517,6 +624,7 @@ def evaluate_groundedness(
             initial_k=initial_k,
             max_chunks_per_source=max_chunks_per_source,
             debug_log_path=debug_log_path,
+            judge_llm=judge_llm,
         )
         rows.append(row_result)
 
@@ -573,6 +681,7 @@ def evaluate_groundedness(
         "overconfident_answer_rate": total_overconfident_rows / total_should_abstain_rows if total_should_abstain_rows else None,
         "groundedness_score": total_groundedness_score / num_rows if num_rows else 0.0,
         "answer_mode": answer_mode,
+        "judge_mode": judge_mode,
     }
 
     category_summary: dict[str, dict[str, float]] = {}
@@ -630,6 +739,7 @@ def print_summary(result: dict[str, Any]) -> None:
     print(f"appropriate_abstain    : {format_optional_rate(summary['appropriate_abstain_rate'])}")
     print(f"overconfident_answer   : {format_optional_rate(summary['overconfident_answer_rate'])}")
     print(f"answer_mode            : {summary['answer_mode']}")
+    print(f"judge_mode             : {summary['judge_mode']}")
 
     if category_summary:
         print("by_category:")
@@ -712,6 +822,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--require-critical-unsupported-rate", type=float, default=0.0)
     parser.add_argument("--require-conflict-rate", type=float, default=0.0)
     parser.add_argument("--require-appropriate-abstain-rate", type=float)
+    parser.add_argument(
+        "--judge-mode",
+        choices=["heuristic", "judge", "hybrid"],
+        default="heuristic",
+        help="Choose heuristic scoring, LLM judging, or a hybrid fallback mode.",
+    )
     return parser.parse_args()
 
 
@@ -719,9 +835,16 @@ def main() -> None:
     args = parse_args()
     gold_queries = load_gold_queries(args.gold_path)
 
+    judge_llm: Any | None = None
+    if args.judge_mode in {"judge", "hybrid"}:
+        from src.rag.llm import get_judge_llm
+
+        judge_llm = get_judge_llm()
+
     result = evaluate_groundedness(
         gold_queries,
         answer_mode=args.answer_mode,
+        judge_mode=args.judge_mode,
         vectorstore_path=args.vectorstore_path,
         chunks_path=args.chunks_path,
         retriever_backend=args.retriever_backend,
@@ -729,6 +852,7 @@ def main() -> None:
         initial_k=args.initial_k,
         max_chunks_per_source=args.max_chunks_per_source,
         debug_log_path=args.debug_log_path,
+        judge_llm=judge_llm,
     )
 
     output_path = Path(args.output_path)

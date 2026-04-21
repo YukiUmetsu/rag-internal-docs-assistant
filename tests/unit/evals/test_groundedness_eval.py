@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langchain_core.documents import Document
 
-from evals.run_groundedness_eval import answer_contains_refusal, answer_mentions_claim, score_claim
+from evals.run_groundedness_eval import answer_contains_refusal, answer_mentions_claim, parse_judge_verdict, score_claim
 
 
 def test_answer_mentions_claim_supports_exact_match() -> None:
@@ -47,6 +47,8 @@ def test_score_claim_labels_supported_when_source_and_answer_align() -> None:
         retrieved_source_names={"refund_policy_2026.md"},
         retrieved_docs=docs,
         expected_behavior="answer",
+        judge_mode="heuristic",
+        judge_llm=None,
     )
 
     assert result["label"] == "supported"
@@ -75,6 +77,8 @@ def test_score_claim_skips_unmentioned_optional_claim() -> None:
         retrieved_source_names={"refund_policy_2026.md"},
         retrieved_docs=docs,
         expected_behavior="answer",
+        judge_mode="heuristic",
+        judge_llm=None,
     )
 
     assert result["label"] == "skipped"
@@ -104,6 +108,8 @@ def test_score_claim_labels_supported_for_optional_claim_when_mentioned() -> Non
         retrieved_source_names={"refund_policy_2026.md"},
         retrieved_docs=docs,
         expected_behavior="answer",
+        judge_mode="heuristic",
+        judge_llm=None,
     )
 
     assert result["label"] == "supported"
@@ -127,6 +133,54 @@ def test_score_claim_labels_abstained_for_refusal_rows() -> None:
         retrieved_source_names=set(),
         retrieved_docs=docs,
         expected_behavior="abstain",
+        judge_mode="heuristic",
+        judge_llm=None,
     )
 
     assert result["label"] == "abstained"
+
+
+def test_parse_judge_verdict_reads_json_payload() -> None:
+    verdict = parse_judge_verdict(
+        '{"label":"supported","reason":"grounded in source","confidence":0.91}'
+    )
+
+    assert verdict["label"] == "supported"
+    assert verdict["reason"] == "grounded in source"
+    assert verdict["confidence"] == 0.91
+
+
+def test_score_claim_uses_judge_when_enabled() -> None:
+    docs = [
+        Document(
+            page_content="Refund attempts should use idempotency keys.",
+            metadata={"file_name": "refund_policy_2026.md"},
+        )
+    ]
+    claim = {
+        "id": "duplicate_refund_handling",
+        "text": "Duplicate refund attempts should rely on idempotency keys and return existing refund results.",
+        "type": "procedural",
+        "critical": True,
+        "supported_by": ["refund_policy_2026.md"],
+        "conflict_with": [],
+        "optional": True,
+    }
+
+    class FakeJudge:
+        def invoke(self, *_args, **_kwargs):
+            return type("Response", (), {"content": '{"label":"supported","reason":"judge approved","confidence":0.88}'})()
+
+    result = score_claim(
+        answer="The answer uses refund policy language.",
+        claim=claim,
+        retrieved_source_names={"refund_policy_2026.md"},
+        retrieved_docs=docs,
+        expected_behavior="answer",
+        judge_mode="judge",
+        judge_llm=FakeJudge(),
+    )
+
+    assert result["label"] == "supported"
+    assert result["judge_used"] is True
+    assert result["reason"] == "judge approved"

@@ -21,6 +21,7 @@ EVAL_DEBUG_LOG_PATH ?= artifacts/evals/rerank_debug.jsonl
 GROUNDEDNESS_GOLD_PATH ?= evals/groundedness_gold.yaml
 GROUNDEDNESS_OUTPUT_PATH ?= artifacts/evals/groundedness_eval_results.json
 GROUNDEDNESS_DEBUG_LOG_PATH ?= artifacts/evals/groundedness_debug.jsonl
+GROUNDEDNESS_JUDGE_MODE ?= heuristic
 DOCKER_COMPOSE ?= docker compose
 DOCKER_COMPOSE_PROD ?= docker compose -f docker-compose.yml -f docker-compose.prod.yml
 DOCKER_API_RUN ?= $(DOCKER_COMPOSE) run --rm api
@@ -282,6 +283,7 @@ groundedness-eval:
 		--gold-path $(GROUNDEDNESS_GOLD_PATH) \
 		--output-path $(GROUNDEDNESS_OUTPUT_PATH) \
 		--debug-log-path $(GROUNDEDNESS_DEBUG_LOG_PATH) \
+		--judge-mode $(GROUNDEDNESS_JUDGE_MODE) \
 		--require-groundedness-score 0.80 \
 		--require-critical-unsupported-rate 0.0 \
 		--require-conflict-rate 0.0
@@ -292,6 +294,7 @@ local-groundedness-eval:
 		--output-path $(GROUNDEDNESS_OUTPUT_PATH) \
 		--debug-log-path $(GROUNDEDNESS_DEBUG_LOG_PATH) \
 		--retriever-backend faiss \
+		--judge-mode $(GROUNDEDNESS_JUDGE_MODE) \
 		--require-groundedness-score 0.80 \
 		--require-critical-unsupported-rate 0.0 \
 		--require-conflict-rate 0.0

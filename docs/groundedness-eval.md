@@ -46,6 +46,17 @@ Use `skipped` when a claim is optional and the answer does not make that
 claim. Skipped claims are excluded from the aggregate rates and do not affect
 row pass/fail.
 
+## Judge modes
+
+The evaluator supports two scoring paths:
+
+- `heuristic`: string and source-based checks only
+- `judge`: LLM-based claim scoring over the retrieved context
+- `hybrid`: LLM judge first, heuristic fallback if the judge call fails
+
+Use the heuristic path for a fast regression gate. Use the judge path when the
+claim requires semantic support, paraphrase handling, or multi-source synthesis.
+
 ## Row schema
 
 The groundedness eval should live in `evals/groundedness_gold.yaml` and use this
@@ -168,7 +179,7 @@ Score groundedness in layers:
 
 1. Deterministic checks for exact numbers, years, and cited document names.
 2. String or span matching for obvious factual statements.
-3. Optional LLM judge for paraphrases and contradiction detection.
+3. LLM judge scoring for paraphrases, multi-source support, and contradiction detection.
 4. Human spot checks on a small sample each run.
 
 That mix keeps the system explainable while still covering fuzzy language.
@@ -206,6 +217,18 @@ The runner reads `evals/groundedness_gold.yaml` and writes results to
 
 The command uses live answer generation by default and falls back to the mock
 answer path if the live generation step fails.
+
+To enable the LLM judge:
+
+```bash
+make groundedness-eval GROUNDEDNESS_JUDGE_MODE=judge GROQ_JUDGE_MODEL_NAME=your-model-name
+```
+
+or run the Python entrypoint directly with `--judge-mode judge` or
+`--judge-mode hybrid`.
+
+If `GROQ_JUDGE_MODEL_NAME` is unset, the judge uses
+`meta-llama/llama-4-scout-17b-16e-instruct`.
 
 The local target assumes the retrieval and rerank models are already cached in
 the environment. If those models are not cached, run the Docker target instead
