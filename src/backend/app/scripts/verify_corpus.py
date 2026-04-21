@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from src.backend.app.core.corpus import verify_corpus_integrity
+from src.backend.app.core.corpus.integrity import verify_corpus_integrity
 from src.backend.app.core.settings import get_settings
 
 

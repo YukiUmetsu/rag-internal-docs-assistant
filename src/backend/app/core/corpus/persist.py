@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import create_engine, func, insert, text, update
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.backend.app.core.corpus_schema import (
+from src.backend.app.core.corpus.schema import (
     CorpusIngestResult,
     PreparedCorpusSource,
     document_chunks_table,

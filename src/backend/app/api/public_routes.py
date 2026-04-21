@@ -48,7 +48,7 @@ def _feedback_route_context(
 def health() -> HealthResponse:
     settings = get_settings()
     from src.backend.app.core.database import check_database_health
-    from src.backend.app.core.queue import check_celery_worker_health, check_redis_health
+    from src.backend.app.core.queue.health import check_celery_worker_health, check_redis_health
 
     database_health = check_database_health(settings.database_url)
     redis_health = check_redis_health(settings.redis_url)
@@ -161,7 +161,7 @@ def create_feedback_endpoint(request: FeedbackCreateRequest) -> FeedbackDetail:
 
 @router.post("/diagnostics/celery/ping", response_model=CeleryDiagnosticSubmissionResponse, status_code=202)
 def enqueue_celery_ping(request: CeleryDiagnosticRequest) -> CeleryDiagnosticSubmissionResponse:
-    from src.backend.app.core.queue import enqueue_diagnostic_task
+    from src.backend.app.core.queue.tasks import enqueue_diagnostic_task
 
     task_id = enqueue_diagnostic_task(request.message)
     return CeleryDiagnosticSubmissionResponse(
@@ -173,7 +173,7 @@ def enqueue_celery_ping(request: CeleryDiagnosticRequest) -> CeleryDiagnosticSub
 
 @router.get("/diagnostics/celery/{task_id}", response_model=CeleryDiagnosticStatusResponse)
 def get_celery_ping_status(task_id: str) -> CeleryDiagnosticStatusResponse:
-    from src.backend.app.core.queue import get_diagnostic_task_status
+    from src.backend.app.core.queue.tasks import get_diagnostic_task_status
 
     status = get_diagnostic_task_status(task_id)
     return CeleryDiagnosticStatusResponse(**status.__dict__)

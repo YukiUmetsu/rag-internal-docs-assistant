@@ -167,7 +167,8 @@ def get_admin_dashboard(
 
     # Load the corpus helpers lazily so importing this module does not pull in
     # the heavier ingest stack unless the dashboard actually needs it.
-    from src.backend.app.core.corpus import count_active_corpus_rows, verify_corpus_integrity
+    from src.backend.app.core.corpus.integrity import verify_corpus_integrity
+    from src.backend.app.core.corpus.persist import count_active_corpus_rows
 
     backend_state = get_admin_retriever_backend(database_url, retriever_backend)
     corpus_report = verify_corpus_integrity(database_url)

@@ -19,7 +19,8 @@ from src.backend.app.core.admin import (
     AdminSeriesPoint,
     AdminUploadStat,
 )
-from src.backend.app.core.queue import CeleryWorkerHealth, DiagnosticTaskStatus, RedisHealth
+from src.backend.app.core.queue.health import CeleryWorkerHealth, RedisHealth
+from src.backend.app.core.queue.tasks import DiagnosticTaskStatus
 from src.backend.app.core.ingest_jobs import IngestJobDetail, IngestJobSummary
 from src.backend.app.core.feedback import FeedbackDetail as FeedbackDetailRecord
 from src.backend.app.core.uploads import UploadedFileSummary as UploadedFileRecord
@@ -45,9 +46,9 @@ def make_doc(file_name: str = "refund_policy_2025.md") -> Document:
 
 def test_health_endpoint_returns_status() -> None:
     with (
-        patch("src.backend.app.core.queue.check_redis_health", return_value=RedisHealth(available=True)),
+        patch("src.backend.app.core.queue.health.check_redis_health", return_value=RedisHealth(available=True)),
         patch(
-            "src.backend.app.core.queue.check_celery_worker_health",
+            "src.backend.app.core.queue.health.check_celery_worker_health",
             return_value=CeleryWorkerHealth(available=True),
         ),
     ):
@@ -334,7 +335,7 @@ def test_admin_feedback_update_rejects_invalid_transition(caplog) -> None:
 
 
 def test_celery_ping_endpoint_enqueues_task() -> None:
-    with patch("src.backend.app.core.queue.enqueue_diagnostic_task", return_value="task-123"):
+    with patch("src.backend.app.core.queue.tasks.enqueue_diagnostic_task", return_value="task-123"):
         response = client.post(
             "/api/diagnostics/celery/ping",
             json={"message": "ping"},
@@ -348,7 +349,7 @@ def test_celery_ping_endpoint_enqueues_task() -> None:
 
 def test_celery_ping_status_endpoint_serializes_task_state() -> None:
     with patch(
-        "src.backend.app.core.queue.get_diagnostic_task_status",
+        "src.backend.app.core.queue.tasks.get_diagnostic_task_status",
         return_value=DiagnosticTaskStatus(
             task_id="task-123",
             state="SUCCESS",

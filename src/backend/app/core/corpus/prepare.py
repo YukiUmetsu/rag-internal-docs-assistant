@@ -9,7 +9,7 @@ from typing import Any, Iterable
 
 from langchain_core.documents import Document
 
-from src.backend.app.core.corpus_schema import PreparedCorpusSource
+from src.backend.app.core.corpus.schema import PreparedCorpusSource
 from src.backend.app.core.uploads import get_uploaded_file
 from src.rag.chunking import split_documents
 from src.rag.document_sources import (

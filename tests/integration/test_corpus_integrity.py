@@ -9,7 +9,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
-from src.backend.app.core.corpus import verify_corpus_integrity
+from src.backend.app.core.corpus.integrity import verify_corpus_integrity
 from src.backend.app.main import app
 
 

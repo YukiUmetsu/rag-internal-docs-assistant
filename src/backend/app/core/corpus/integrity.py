@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.backend.app.core.corpus_schema import CorpusIntegrityIssue, CorpusIntegrityReport
+from src.backend.app.core.corpus.schema import CorpusIntegrityIssue, CorpusIntegrityReport
 from src.backend.app.core.uploads import get_uploaded_file
 
 
@@ -194,7 +194,7 @@ def _collect_count_based_issues(counts: _IntegrityCounts) -> list[CorpusIntegrit
                 code="source_documents_without_chunks",
                 message=f"Found {counts.source_documents_without_chunks} active source document(s) without chunks",
             )
-    )
+        )
     return issues
 
 

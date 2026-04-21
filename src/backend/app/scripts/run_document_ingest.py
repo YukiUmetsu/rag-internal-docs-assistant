@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import time
 
-from src.backend.app.core.corpus import count_active_corpus_rows
+from src.backend.app.core.corpus.persist import count_active_corpus_rows
 from src.backend.app.core.ingest_jobs import enqueue_document_ingest_job, get_ingest_job
 from src.backend.app.core.settings import get_settings
 

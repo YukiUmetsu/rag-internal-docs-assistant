@@ -10,10 +10,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
-from src.backend.app.core.corpus import (
-    count_corpus_rows_for_job,
-    count_source_document_versions,
-)
+from src.backend.app.core.corpus.persist import count_corpus_rows_for_job, count_source_document_versions
 from src.backend.app.main import app
 
 

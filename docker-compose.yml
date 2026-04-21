@@ -104,7 +104,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    command: celery -A src.backend.app.core.queue:celery_app worker --loglevel=info
+    command: celery -A src.backend.app.core.queue.app:celery_app worker --loglevel=info
     environment:
       APP_NAME: ${APP_NAME:-Acme Company Assistant API}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
