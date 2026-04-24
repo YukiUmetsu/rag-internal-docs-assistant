@@ -45,6 +45,14 @@ The search path is separate from ingest:
 4. The retriever returns ranked chunks.
 5. The app reranks and formats the response.
 
+## Agentic tool routing
+
+`POST /api/agent/chat` sits beside the existing chat and retrieve endpoints. It
+uses a small LangChain tool-calling layer to route questions to read-only tools:
+internal document retrieval, corpus stats, recent ingest jobs, and recent search
+history. The agent is bounded to a small number of calls and returns its tool
+trace so behavior stays inspectable.
+
 ## Postgres vs pgvector
 
 Postgres does more than one job in this app:

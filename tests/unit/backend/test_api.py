@@ -231,6 +231,25 @@ def test_chat_response_schema_allows_retrieve_only_mode() -> None:
     assert response.mode_used == "retrieve_only"
 
 
+def test_retrieve_context_trace_input_summary_includes_request_id() -> None:
+    summary = rag_service.summarize_retrieve_context_inputs(
+        {
+            "question": "What was the refund window in 2025?",
+            "final_k": 5,
+            "request_id": "request-123",
+            "langsmith_extra": {"run_id": "request-123"},
+        }
+    )
+
+    assert summary == {
+        "question": "What was the refund window in 2025?",
+        "question_chars": 35,
+        "final_k": 5,
+        "request_id": "request-123",
+        "langsmith_extra": {"run_id": "request-123"},
+    }
+
+
 def test_feedback_endpoint_serializes_submission() -> None:
     feedback_record = FeedbackDetailRecord(
         id="feedback-123",

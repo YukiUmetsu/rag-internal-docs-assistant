@@ -9,6 +9,7 @@ def test_api_router_includes_public_and_admin_paths() -> None:
     assert "/api/health" in paths
     assert "/api/retrieve" in paths
     assert "/api/chat" in paths
+    assert "/api/agent/chat" in paths
     assert "/api/feedback" in paths
     assert "/api/admin/dashboard" in paths
     assert "/api/admin/feedback/{feedback_id}" in paths

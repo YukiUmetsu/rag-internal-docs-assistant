@@ -13,6 +13,7 @@ Designed to simulate a production internal knowledge assistant with versioned do
 - Async ingestion with Redis + Celery for mounted docs and uploaded files.
 - Eval-gated retriever parity against a committed FAISS baseline.
 - Admin UI for uploads, ingest jobs, documents, search history, and corpus health.
+- Controlled LangChain agent layer for read-only tool selection across RAG search, corpus analytics, ingest jobs, and search history.
 - Docker dev and production-like profiles for consistent local and deployment-style runs.
 - Backend and frontend tests for upload, ingest, retrieval, and admin workflows.
 
@@ -174,6 +175,13 @@ The local demo includes:
 
 The UI supports live generation, mock safe mode, and retrieval-only inspection.
 Mock mode is useful for demos when Groq quota is unavailable.
+
+### Agentic Tool Routing
+
+`POST /api/agent/chat` adds a bounded LangChain agent layer that can choose
+among read-only tools for internal document search and system analytics. Tool
+use is capped, observable in the API response, and designed to avoid
+uncontrolled autonomous loops.
 
 Useful Docker commands:
 

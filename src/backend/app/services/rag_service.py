@@ -81,6 +81,17 @@ def summarize_request_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def summarize_retrieve_context_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
+    question = str(inputs.get("question", ""))
+    return {
+        "question": question,
+        "question_chars": len(question),
+        "final_k": inputs.get("final_k"),
+        "request_id": inputs.get("request_id"),
+        "langsmith_extra": inputs.get("langsmith_extra"),
+    }
+
+
 def summarize_chat_response(response: ChatResponse) -> dict[str, Any]:
     source_files = [source.file_name for source in response.sources]
     return {
@@ -112,9 +123,16 @@ def summarize_retrieve_response(response: RetrieveResponse) -> dict[str, Any]:
     run_type="retriever",
     project_name=LANGSMITH_PROJECT,
     tags=["rag", "retrieval", "hybrid", "rerank"],
+    process_inputs=summarize_retrieve_context_inputs,
     process_outputs=summarize_retrieved_context,
 )
-def retrieve_context(question: str, final_k: int) -> RetrievedContext:
+def retrieve_context(
+    question: str,
+    final_k: int,
+    *,
+    request_id: str | None = None,
+    langsmith_extra: dict[str, Any] | None = None,
+) -> RetrievedContext:
     start = time.perf_counter()
     docs = retrieve(
         query=question,
@@ -153,7 +171,12 @@ def retrieve_only(
     langsmith_extra: dict[str, Any] | None = None,
 ) -> RetrieveResponse:
     request_id = request_id or generate_request_id()
-    context = retrieve_context(question=request.question, final_k=request.final_k)
+    context = retrieve_context(
+        question=request.question,
+        final_k=request.final_k,
+        request_id=request_id,
+        langsmith_extra=langsmith_extra,
+    )
     sources = serialize_documents(context.docs)
     history_persisted = persist_retrieval_history(
         request_kind="retrieve",
@@ -193,7 +216,12 @@ def chat(
 ) -> ChatResponse:
     request_id = request_id or generate_request_id()
     start = time.perf_counter()
-    context = retrieve_context(question=request.question, final_k=request.final_k)
+    context = retrieve_context(
+        question=request.question,
+        final_k=request.final_k,
+        request_id=request_id,
+        langsmith_extra=langsmith_extra,
+    )
     warning = None
 
     if request.mode == "retrieve_only":

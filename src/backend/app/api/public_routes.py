@@ -14,6 +14,7 @@ from src.backend.app.schemas.async_tasks import (
     CeleryDiagnosticSubmissionResponse,
     CeleryDiagnosticStatusResponse,
 )
+from src.backend.app.schemas.agent import AgentChatRequest, AgentChatResponse
 from src.backend.app.schemas.chat import ChatRequest, ChatResponse
 from src.backend.app.schemas.feedback import FeedbackCreateRequest, FeedbackDetail
 from src.backend.app.schemas.ingest_jobs import IngestJobCreateRequest, IngestJobDetail, IngestJobSummary
@@ -88,6 +89,15 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
     request_id = generate_request_id()
     return chat(request, request_id=request_id, langsmith_extra={"run_id": request_id})
+
+
+@router.post("/agent/chat", response_model=AgentChatResponse)
+def agent_chat_endpoint(request: AgentChatRequest) -> AgentChatResponse:
+    from src.backend.app.core.request_ids import generate_request_id
+    from src.backend.app.services.agent_service import agent_chat
+
+    request_id = generate_request_id()
+    return agent_chat(request, request_id=request_id, langsmith_extra={"run_id": request_id})
 
 
 @router.get("/search-history", response_model=list[SearchHistorySummary])
