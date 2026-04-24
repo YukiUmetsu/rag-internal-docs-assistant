@@ -1,4 +1,4 @@
-export type RequestMode = "live" | "mock" | "retrieve_only";
+export type RequestMode = "agent" | "live" | "mock" | "retrieve_only";
 export type ResponseMode = "live" | "mock" | "mock_fallback" | "retrieve_only";
 
 export type Source = {
@@ -21,8 +21,16 @@ export type RetrievalMetadata = {
 
 export type ChatRequest = {
   question: string;
-  mode: RequestMode;
+  mode: Exclude<RequestMode, "agent">;
   final_k: number;
+};
+
+export type AgentChatRequest = {
+  question: string;
+  mode: "mock" | "live";
+  final_k: number;
+  include_debug: boolean;
+  client_timezone?: string;
 };
 
 export type ChatResponse = {
@@ -43,6 +51,25 @@ export type RetrieveResponse = {
   latency_ms: number;
   warning: string | null;
 };
+
+export type AgentToolCall = {
+  name: string;
+  args: Record<string, unknown> | string;
+  output_preview: string | null;
+};
+
+export type AgentChatResponse = {
+  request_id: string | null;
+  answer: string;
+  route: string | null;
+  last_tool: string | null;
+  tool_calls: AgentToolCall[];
+  warnings: string[];
+  sources: Source[];
+  mode: "live" | "mock" | "mock_fallback";
+};
+
+export type AssistantResponse = ChatResponse | AgentChatResponse;
 
 export type HealthResponse = {
   status: "ok";

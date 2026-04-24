@@ -1513,6 +1513,8 @@ button {
   margin: 0;
   color: var(--text-soft);
   line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .empty-answer,
@@ -1570,6 +1572,32 @@ button {
 .source-list {
   display: grid;
   gap: 12px;
+}
+
+.tool-call-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tool-call {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #1a2029;
+}
+
+.tool-call p {
+  overflow-wrap: anywhere;
+  margin: 8px 0 0;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.tool-call small {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .source-card {

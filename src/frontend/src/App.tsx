@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { sendChat } from "./api/client";
-import type { ChatResponse, RequestMode } from "./api/types";
+import { sendAgentChat, sendChat } from "./api/client";
+import type { AssistantResponse, RequestMode } from "./api/types";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { AdminFeedback } from "./components/AdminFeedback";
 import { AdminIngestJobs } from "./components/AdminIngestJobs";
@@ -13,6 +13,7 @@ import { RetrievalDebugPanel } from "./components/RetrievalDebugPanel";
 
 export default function App() {
   const pathname = window.location.pathname;
+  const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
 
   if (pathname.startsWith("/admin/jobs")) {
     return <AdminIngestJobs />;
@@ -32,7 +33,7 @@ export default function App() {
 
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<RequestMode>("mock");
-  const [response, setResponse] = useState<ChatResponse | null>(null);
+  const [response, setResponse] = useState<AssistantResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,11 +46,20 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await sendChat({
-        question: trimmedQuestion,
-        mode,
-        final_k: 4
-      });
+      const result =
+        mode === "agent"
+          ? await sendAgentChat({
+              question: trimmedQuestion,
+              mode: "live",
+              final_k: 4,
+              include_debug: true,
+              client_timezone: clientTimezone
+            })
+          : await sendChat({
+              question: trimmedQuestion,
+              mode,
+              final_k: 4
+            });
       setResponse(result);
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "Something went wrong.");
@@ -103,10 +113,17 @@ export default function App() {
         <div className="content-grid">
           <section className="conversation">
             <AnswerPanel response={response} isLoading={isLoading} error={error} />
-            {response?.sources.length ? <RetrievalDebugPanel response={response} /> : null}
+            {shouldShowDebugPanel(response) ? <RetrievalDebugPanel response={response} /> : null}
           </section>
         </div>
       </section>
     </main>
   );
+}
+
+function shouldShowDebugPanel(response: AssistantResponse | null): boolean {
+  if (!response) {
+    return false;
+  }
+  return "tool_calls" in response || response.sources.length > 0;
 }

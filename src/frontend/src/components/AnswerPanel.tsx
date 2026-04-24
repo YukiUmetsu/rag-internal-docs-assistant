@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
-import type { ChatResponse } from "../api/types";
+import type { AssistantResponse } from "../api/types";
 import { AnswerFeedback } from "./AnswerFeedback";
 
 type Props = {
-  response: ChatResponse | null;
+  response: AssistantResponse | null;
   isLoading: boolean;
   error: string | null;
 };
 
-const LOADING_STEPS = ["Retrieving sources", "Ranking passages", "Preparing response"];
+const LOADING_STEPS = ["Working", "Reviewing context", "Preparing response"];
+
+function responseModeLabel(response: AssistantResponse): string {
+  if ("mode_used" in response) {
+    return response.mode_used.replace("_", " ");
+  }
+  return `agent ${response.mode.replace("_", " ")}`;
+}
+
+function responseWarnings(response: AssistantResponse): string[] {
+  if ("warning" in response) {
+    return response.warning ? [response.warning] : [];
+  }
+  return response.warnings;
+}
 
 export function AnswerPanel({ response, isLoading, error }: Props) {
   const [loadingIndex, setLoadingIndex] = useState(0);
@@ -45,7 +59,7 @@ export function AnswerPanel({ response, isLoading, error }: Props) {
     <section className="answer-panel">
       <div className="panel-header">
         <span>Answer</span>
-        {response ? <small>{response.mode_used.replace("_", " ")}</small> : null}
+        {response ? <small>{responseModeLabel(response)}</small> : null}
       </div>
 
       {isLoading ? (
@@ -61,9 +75,13 @@ export function AnswerPanel({ response, isLoading, error }: Props) {
 
       {!isLoading && !error && response ? (
         <>
-          {response.warning ? <p className="warning-message">{response.warning}</p> : null}
+          {responseWarnings(response).map((warning, index) => (
+            <p className="warning-message" key={`${response.request_id ?? "response"}-${index}-${warning}`}>
+              {warning}
+            </p>
+          ))}
           <p className="answer-text">{response.answer}</p>
-          {response.request_id ? (
+          {response.request_id && "mode_used" in response ? (
             <div className="feedback-trigger-row">
               {feedbackSubmitted ? (
                 <span className="feedback-thanks">

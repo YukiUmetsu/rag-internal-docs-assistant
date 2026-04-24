@@ -37,6 +37,7 @@ export function ChatComposer({
         onChange={(event) => onModeChange(event.target.value as RequestMode)}
         aria-label="Answer mode"
       >
+        <option value="agent">Agent routing</option>
         <option value="live">Live answer</option>
         <option value="mock">Mock safe mode</option>
         <option value="retrieve_only">Retrieve only</option>
