@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import time
+from datetime import datetime
 from typing import Any
 
 from src.backend.app.core.agent_tools import (
@@ -10,8 +13,10 @@ from src.backend.app.core.agent_tools import (
     get_recent_searches,
     search_internal_docs,
 )
+from src.backend.app.core.search_history import persist_search_history
 from src.backend.app.core.settings import get_settings
 from src.backend.app.schemas.agent import AgentChatRequest, AgentChatResponse
+from src.backend.app.schemas.retrieval import RetrievalMetadata
 
 
 AGENT_SYSTEM_PROMPT = """You are a controlled internal knowledge assistant.
@@ -37,6 +42,8 @@ def agent_chat(
     request_id: str | None = None,
     langsmith_extra: dict[str, Any] | None = None,
 ) -> AgentChatResponse:
+    request_id = request_id or _generate_request_id()
+    start = time.perf_counter()
     context = AgentToolContext(
         final_k=request.final_k,
         max_tool_calls=3,
@@ -57,7 +64,15 @@ def agent_chat(
         mode="mock" if normalized_mode != "live" else "mock_fallback",
         request_id=request_id,
     )
-    return _with_debug_preference(response, request.include_debug)
+    response = _with_debug_preference(response, request.include_debug)
+    _persist_agent_search_history(
+        request=request,
+        request_id=request_id,
+        context=context,
+        response=response,
+        latency_ms=int((time.perf_counter() - start) * 1000),
+    )
+    return response
 
 
 def _try_live_agent(
@@ -133,14 +148,14 @@ def _mock_agent_chat(
         answer = _answer_from_tool_output("Recent ingest jobs", output)
     elif route == "recent_searches":
         output = get_recent_searches(context, limit=5)
-        answer = _answer_from_tool_output("Recent searches", output)
+        answer = _answer_from_recent_searches(output)
     elif route == "internal_docs":
         output = search_internal_docs(context, question)
         answer = _answer_from_internal_search(output, context)
     else:
         answer = _answer_general_question(question)
 
-    return AgentChatResponse(
+    response = AgentChatResponse(
         request_id=request_id,
         answer=answer,
         route=route,
@@ -150,6 +165,7 @@ def _mock_agent_chat(
         sources=context.sources,
         mode=mode,
     )
+    return response
 
 
 def _choose_route(question: str) -> str:
@@ -202,9 +218,85 @@ def _answer_from_internal_search(output: str, context: AgentToolContext) -> str:
 
 
 def _answer_from_tool_output(label: str, output: str) -> str:
-    if " failed:" in output:
+    lowered = output.lower()
+    if " failed:" in output or "unavailable" in lowered:
         return f"{label} are unavailable right now. The tool error is included in the trace."
     return f"{label} retrieved. See the tool trace for the bounded read-only result."
+
+
+def _answer_from_recent_searches(output: str) -> str:
+    if "unavailable" in output.lower() or "failed:" in output:
+        return "Recent searches are unavailable right now."
+
+    try:
+        payload = json.loads(output)
+    except json.JSONDecodeError:
+        return "Recent searches retrieved. See the tool trace for the bounded read-only result."
+
+    searches = payload.get("searches", [])
+    if not searches:
+        return "No recent searches were found."
+
+    lines = []
+    for index, item in enumerate(searches[:5], start=1):
+        item_question = str(item.get("question", "unknown question"))
+        mode_used = str(item.get("mode_used", "unknown mode"))
+        created_at = _format_agent_timestamp(item.get("created_at"))
+        lines.append(f"{index}. {item_question}\n   {mode_used} · {created_at}")
+
+    return "Recent searches\n" + "\n".join(lines)
+
+
+def _format_agent_timestamp(value: Any) -> str:
+    if not value:
+        return "unknown time"
+    if isinstance(value, datetime):
+        return value.strftime("%b %-d, %Y at %-I:%M %p")
+
+    text = str(value)
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    return parsed.strftime("%b %-d, %Y at %-I:%M %p")
+
+
+def _persist_agent_search_history(
+    *,
+    request: AgentChatRequest,
+    request_id: str,
+    context: AgentToolContext,
+    response: AgentChatResponse,
+    latency_ms: int,
+) -> None:
+    retrieval = context.retrieval_metadata or RetrievalMetadata(
+        use_hybrid=False,
+        use_rerank=False,
+        detected_year=None,
+        final_k=request.final_k,
+        initial_k=request.final_k,
+    )
+    warning = "; ".join(response.warnings) if response.warnings else None
+    settings = get_settings()
+    persist_search_history(
+        getattr(settings, "database_url", None),
+        history_id=request_id,
+        request_kind="agent",
+        question=request.question,
+        requested_mode=request.mode,
+        mode_used=response.mode,
+        retrieval=retrieval,
+        sources=response.sources,
+        latency_ms=latency_ms,
+        answer=response.answer,
+        warning=warning,
+    )
+
+
+def _generate_request_id() -> str:
+    from src.backend.app.core.request_ids import generate_request_id
+
+    return generate_request_id()
 
 
 def _answer_general_question(question: str) -> str:

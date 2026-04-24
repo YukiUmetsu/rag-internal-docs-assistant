@@ -79,6 +79,26 @@ def test_agent_mock_routes_failed_jobs_to_ingest_tool() -> None:
     assert jobs_tool.call_args.kwargs["status"] == "failed"
 
 
+def test_agent_mock_routes_recent_searches_to_recent_search_summary() -> None:
+    with (
+        patch(
+            "src.backend.app.services.agent_service.get_recent_searches",
+            return_value='{"searches": [{"question": "What is RAG?", "mode_used": "mock", "created_at": "2026-04-24T12:00:00Z"}]}',
+        ),
+        patch("src.backend.app.services.agent_service.persist_search_history", return_value="request-123") as persist_history,
+        patch("src.backend.app.services.agent_service._generate_request_id", return_value="request-123"),
+    ):
+        response = agent_chat(AgentChatRequest(question="Show me recent searches", include_debug=True))
+
+    assert response.route == "recent_searches"
+    persist_history.assert_called_once()
+    assert persist_history.call_args.kwargs["request_kind"] == "agent"
+    assert response.answer.startswith("Recent searches")
+    assert "1. What is RAG?" in response.answer
+    assert "What is RAG?" in response.answer
+    assert "mock · Apr 24, 2026 at 12:00 PM" in response.answer
+
+
 def test_agent_handles_tool_failure_gracefully() -> None:
     with patch("src.backend.app.core.admin.get_admin_dashboard", side_effect=RuntimeError("database unavailable")):
         response = client.post(

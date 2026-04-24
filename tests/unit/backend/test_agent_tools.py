@@ -152,3 +152,16 @@ def test_tool_limits_are_clamped_for_database_reads() -> None:
     list_history.assert_called_once()
     assert list_history.call_args.kwargs["limit"] == 50
     assert context.tool_calls[2].args["limit"] == 50
+
+
+def test_recent_searches_soft_fail_when_psycopg_is_missing() -> None:
+    context = AgentToolContext(final_k=5)
+
+    with patch(
+        "src.backend.app.core.search_history.list_search_history",
+        side_effect=ModuleNotFoundError("No module named 'psycopg'"),
+    ):
+        output = get_recent_searches(context, limit=5)
+
+    assert output == "Recent searches are unavailable right now."
+    assert "PostgreSQL driver is not installed" in context.warnings[0]

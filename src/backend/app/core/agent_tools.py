@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 from src.backend.app.core.settings import get_settings
 from src.backend.app.schemas.agent import AgentToolCall
+from src.backend.app.schemas.retrieval import RetrievalMetadata
 from src.backend.app.schemas.retrieval import Source
 from src.backend.app.services.rag_service import retrieve_context
 from src.backend.app.utils.documents import serialize_documents
@@ -17,6 +18,7 @@ class AgentToolContext:
     max_tool_calls: int = 3
     request_id: str | None = None
     langsmith_extra: dict[str, Any] | None = None
+    retrieval_metadata: RetrievalMetadata | None = None
     tool_calls: list[AgentToolCall] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     sources: list[Source] = field(default_factory=list)
@@ -66,6 +68,7 @@ def search_internal_docs(context: AgentToolContext, question: str) -> str:
             request_id=context.request_id,
             langsmith_extra=context.langsmith_extra,
         )
+        context.retrieval_metadata = retrieved.metadata
         sources = serialize_documents(retrieved.docs)
         context.sources = sources
         if not sources:
@@ -97,10 +100,16 @@ def get_corpus_stats(context: AgentToolContext) -> str:
     """Use for corpus/admin metrics such as document counts, chunk counts, upload counts, job counts, and corpus health."""
 
     def operation() -> str:
-        from src.backend.app.core.admin import get_admin_dashboard
+        try:
+            from src.backend.app.core.admin import get_admin_dashboard
 
-        settings = get_settings()
-        dashboard = get_admin_dashboard(settings.database_url, retriever_backend=settings.retriever_backend)
+            settings = get_settings()
+            dashboard = get_admin_dashboard(settings.database_url, retriever_backend=settings.retriever_backend)
+        except (ModuleNotFoundError, ImportError, RuntimeError) as exc:
+            detail = _db_unavailable_detail(exc)
+            context.warnings.append(f"Corpus stats are unavailable right now. {detail}")
+            return "Corpus stats are unavailable right now."
+
         payload = {
             "retriever_backend": dashboard.retriever_backend,
             "corpus": asdict(dashboard.corpus),
@@ -127,11 +136,17 @@ def get_recent_ingest_jobs(
     safe_limit = _clamp_limit(limit)
 
     def operation() -> str:
-        from src.backend.app.core.ingest_jobs import list_ingest_jobs
+        try:
+            from src.backend.app.core.ingest_jobs import list_ingest_jobs
 
-        settings = get_settings()
-        fetch_limit = _clamp_limit(safe_limit * 4) if status else safe_limit
-        jobs = list_ingest_jobs(settings.database_url, limit=fetch_limit)
+            settings = get_settings()
+            fetch_limit = _clamp_limit(safe_limit * 4) if status else safe_limit
+            jobs = list_ingest_jobs(settings.database_url, limit=fetch_limit)
+        except (ModuleNotFoundError, ImportError, RuntimeError) as exc:
+            detail = _db_unavailable_detail(exc)
+            context.warnings.append(f"Recent ingest jobs are unavailable right now. {detail}")
+            return "Recent ingest jobs are unavailable right now."
+
         if status:
             normalized_status = status.strip().lower()
             jobs = [job for job in jobs if job.status.lower() == normalized_status]
@@ -163,10 +178,16 @@ def get_recent_searches(context: AgentToolContext, limit: int = 5) -> str:
     safe_limit = _clamp_limit(limit)
 
     def operation() -> str:
-        from src.backend.app.core.search_history import list_search_history
+        try:
+            from src.backend.app.core.search_history import list_search_history
 
-        settings = get_settings()
-        history = list_search_history(settings.database_url, limit=safe_limit)
+            settings = get_settings()
+            history = list_search_history(settings.database_url, limit=safe_limit)
+        except (ModuleNotFoundError, ImportError, RuntimeError) as exc:
+            detail = _db_unavailable_detail(exc)
+            context.warnings.append(f"Recent searches are unavailable right now. {detail}")
+            return "Recent searches are unavailable right now."
+
         payload = [
             {
                 "id": item.id,
@@ -236,3 +257,9 @@ def _clamp_limit(limit: int, *, minimum: int = 1, maximum: int = 100) -> int:
     except (TypeError, ValueError):
         value = minimum
     return max(minimum, min(value, maximum))
+
+
+def _db_unavailable_detail(exc: Exception) -> str:
+    if isinstance(exc, (ModuleNotFoundError, ImportError)) and "psycopg" in str(exc):
+        return "The PostgreSQL driver is not installed in this runtime."
+    return f"{type(exc).__name__}: {exc}"
