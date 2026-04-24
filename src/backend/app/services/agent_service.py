@@ -141,7 +141,7 @@ def _try_live_agent(
     return AgentChatResponse(
         request_id=request_id,
         answer=answer,
-        route=_choose_route(request.question),
+        route=_classify_question(request.question),
         last_tool=last_tool,
         tool_calls=context.tool_calls,
         warnings=context.warnings,
@@ -158,7 +158,7 @@ def _mock_agent_chat(
     request_id: str | None,
 ) -> AgentChatResponse:
     question = request.question
-    route = _choose_route(question)
+    route = _classify_question(question)
 
     if route == "corpus_stats":
         output = get_corpus_stats(context)
@@ -188,7 +188,7 @@ def _mock_agent_chat(
     return response
 
 
-def _choose_route(question: str) -> str:
+def _classify_question(question: str) -> str:
     text = question.lower()
     if any(term in text for term in ("ingest", "job", "failed job", "running job", "queued job", "succeeded job")):
         return "ingest_jobs"
