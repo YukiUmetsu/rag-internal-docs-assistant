@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime
 from typing import Any
+
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.backend.app.core.agent_tools import (
     AgentToolContext,
@@ -17,6 +18,8 @@ from src.backend.app.core.search_history import persist_search_history
 from src.backend.app.core.settings import get_settings
 from src.backend.app.schemas.agent import AgentChatRequest, AgentChatResponse
 from src.backend.app.schemas.retrieval import RetrievalMetadata
+from src.backend.app.services.rag_service import DEFAULT_INITIAL_K
+from src.backend.app.utils.datetime_display import parse_display_datetime
 
 
 AGENT_SYSTEM_PROMPT = """You are a controlled internal knowledge assistant.
@@ -33,6 +36,9 @@ Rules:
 - If tool results are insufficient, say what is missing.
 - Prefer at most 2 tool calls unless comparison requires more.
 - Keep answers concise and cite source filenames when tool output includes them.
+- When answering recent searches, use a numbered list with human-friendly timestamps like
+  `1. What is RAG?\n   agent · Apr 24, 2026 at 3:25 PM CDT`.
+- Do not use raw ISO timestamps, seconds, or verbose closing prose for recent searches.
 - Do not perform write actions."""
 
 
@@ -49,12 +55,23 @@ def agent_chat(
         max_tool_calls=3,
         request_id=request_id,
         langsmith_extra=langsmith_extra,
+        client_timezone=request.client_timezone,
     )
     normalized_mode = request.mode.strip().lower()
 
     if normalized_mode == "live":
         response = _try_live_agent(request, context, request_id=request_id, langsmith_extra=langsmith_extra)
         if response is not None:
+            persistence_warning = _persist_agent_search_history(
+                request=request,
+                request_id=request_id,
+                context=context,
+                response=response,
+                latency_ms=int((time.perf_counter() - start) * 1000),
+            )
+            if persistence_warning:
+                context.warnings.append(persistence_warning)
+                response = response.model_copy(update={"warnings": context.warnings})
             return _with_debug_preference(response, request.include_debug)
         context.warnings.append("Live agent is unavailable; used deterministic mock routing.")
 
@@ -64,14 +81,17 @@ def agent_chat(
         mode="mock" if normalized_mode != "live" else "mock_fallback",
         request_id=request_id,
     )
-    response = _with_debug_preference(response, request.include_debug)
-    _persist_agent_search_history(
+    persistence_warning = _persist_agent_search_history(
         request=request,
         request_id=request_id,
         context=context,
         response=response,
         latency_ms=int((time.perf_counter() - start) * 1000),
     )
+    if persistence_warning:
+        context.warnings.append(persistence_warning)
+        response = response.model_copy(update={"warnings": context.warnings})
+    response = _with_debug_preference(response, request.include_debug)
     return response
 
 
@@ -148,7 +168,7 @@ def _mock_agent_chat(
         answer = _answer_from_tool_output("Recent ingest jobs", output)
     elif route == "recent_searches":
         output = get_recent_searches(context, limit=5)
-        answer = _answer_from_recent_searches(output)
+        answer = _answer_from_recent_searches(output, request.client_timezone)
     elif route == "internal_docs":
         output = search_internal_docs(context, question)
         answer = _answer_from_internal_search(output, context)
@@ -224,14 +244,17 @@ def _answer_from_tool_output(label: str, output: str) -> str:
     return f"{label} retrieved. See the tool trace for the bounded read-only result."
 
 
-def _answer_from_recent_searches(output: str) -> str:
+def _answer_from_recent_searches(output: str, client_timezone: str | None) -> str:
     if "unavailable" in output.lower() or "failed:" in output:
         return "Recent searches are unavailable right now."
+
+    if output.startswith("Recent searches"):
+        return output
 
     try:
         payload = json.loads(output)
     except json.JSONDecodeError:
-        return "Recent searches retrieved. See the tool trace for the bounded read-only result."
+        return output
 
     searches = payload.get("searches", [])
     if not searches:
@@ -240,25 +263,14 @@ def _answer_from_recent_searches(output: str) -> str:
     lines = []
     for index, item in enumerate(searches[:5], start=1):
         item_question = str(item.get("question", "unknown question"))
-        mode_used = str(item.get("mode_used", "unknown mode"))
-        created_at = _format_agent_timestamp(item.get("created_at"))
+        mode_used = str(item.get("mode_used", item.get("request_kind", "unknown mode")))
+        created_at = _format_agent_timestamp(
+            item.get("display_created_at") or item.get("created_at"),
+            client_timezone,
+        )
         lines.append(f"{index}. {item_question}\n   {mode_used} · {created_at}")
 
     return "Recent searches\n" + "\n".join(lines)
-
-
-def _format_agent_timestamp(value: Any) -> str:
-    if not value:
-        return "unknown time"
-    if isinstance(value, datetime):
-        return value.strftime("%b %-d, %Y at %-I:%M %p")
-
-    text = str(value)
-    try:
-        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
-    except ValueError:
-        return text
-    return parsed.strftime("%b %-d, %Y at %-I:%M %p")
 
 
 def _persist_agent_search_history(
@@ -268,29 +280,33 @@ def _persist_agent_search_history(
     context: AgentToolContext,
     response: AgentChatResponse,
     latency_ms: int,
-) -> None:
+) -> str | None:
     retrieval = context.retrieval_metadata or RetrievalMetadata(
         use_hybrid=False,
         use_rerank=False,
         detected_year=None,
         final_k=request.final_k,
-        initial_k=request.final_k,
+        initial_k=DEFAULT_INITIAL_K,
     )
     warning = "; ".join(response.warnings) if response.warnings else None
     settings = get_settings()
-    persist_search_history(
-        getattr(settings, "database_url", None),
-        history_id=request_id,
-        request_kind="agent",
-        question=request.question,
-        requested_mode=request.mode,
-        mode_used=response.mode,
-        retrieval=retrieval,
-        sources=response.sources,
-        latency_ms=latency_ms,
-        answer=response.answer,
-        warning=warning,
-    )
+    try:
+        persist_search_history(
+            getattr(settings, "database_url", None),
+            history_id=request_id,
+            request_kind="agent",
+            question=request.question,
+            requested_mode=request.mode,
+            mode_used=response.mode,
+            retrieval=retrieval,
+            sources=response.sources,
+            latency_ms=latency_ms,
+            answer=response.answer,
+            warning=warning,
+        )
+        return None
+    except (SQLAlchemyError, ModuleNotFoundError, ImportError, RuntimeError, OSError) as exc:
+        return f"Agent search history persistence failed: {type(exc).__name__}: {exc}"
 
 
 def _generate_request_id() -> str:
@@ -308,6 +324,10 @@ def _answer_general_question(question: str) -> str:
     if "agent" in text:
         return "An agent is an LLM-driven workflow that can choose tools, inspect results, and then produce a final answer within limits."
     return "I can answer general concepts directly, but internal company facts require a read-only tool lookup."
+
+
+def _format_agent_timestamp(value: Any, client_timezone: str | None = None) -> str:
+    return parse_display_datetime(value, client_timezone)
 
 
 def _extract_agent_answer(result: Any) -> str:

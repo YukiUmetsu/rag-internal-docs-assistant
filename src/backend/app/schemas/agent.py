@@ -12,6 +12,7 @@ class AgentChatRequest(BaseModel):
     mode: str = Field(default="mock")
     final_k: int = Field(default=5, ge=1, le=10)
     include_debug: bool = False
+    client_timezone: str | None = None
 
 
 class AgentToolCall(BaseModel):

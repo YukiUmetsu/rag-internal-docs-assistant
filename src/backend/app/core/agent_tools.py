@@ -9,6 +9,7 @@ from src.backend.app.schemas.agent import AgentToolCall
 from src.backend.app.schemas.retrieval import RetrievalMetadata
 from src.backend.app.schemas.retrieval import Source
 from src.backend.app.services.rag_service import retrieve_context
+from src.backend.app.utils.datetime_display import parse_display_datetime
 from src.backend.app.utils.documents import serialize_documents
 
 
@@ -18,6 +19,7 @@ class AgentToolContext:
     max_tool_calls: int = 3
     request_id: str | None = None
     langsmith_extra: dict[str, Any] | None = None
+    client_timezone: str | None = None
     retrieval_metadata: RetrievalMetadata | None = None
     tool_calls: list[AgentToolCall] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -188,20 +190,14 @@ def get_recent_searches(context: AgentToolContext, limit: int = 5) -> str:
             context.warnings.append(f"Recent searches are unavailable right now. {detail}")
             return "Recent searches are unavailable right now."
 
-        payload = [
-            {
-                "id": item.id,
-                "request_kind": item.request_kind,
-                "question": item.question,
-                "mode_used": item.mode_used,
-                "latency_ms": item.latency_ms,
-                "source_count": item.source_count,
-                "created_at": item.created_at,
-                "warning": item.warning,
-            }
-            for item in history
-        ]
-        return json.dumps({"searches": payload}, default=str)
+        if not history:
+            return "No recent searches were found."
+
+        lines = ["Recent searches"]
+        for index, item in enumerate(history[:safe_limit], start=1):
+            created_at = parse_display_datetime(item.created_at, context.client_timezone)
+            lines.append(f"{index}. {item.question}\n   {item.request_kind} · {created_at}")
+        return "\n".join(lines)
 
     return execute_traced_tool(context, "get_recent_searches", {"limit": safe_limit}, operation)
 

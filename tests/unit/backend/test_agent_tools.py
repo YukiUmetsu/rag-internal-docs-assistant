@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from langchain_core.documents import Document
@@ -165,3 +166,28 @@ def test_recent_searches_soft_fail_when_psycopg_is_missing() -> None:
 
     assert output == "Recent searches are unavailable right now."
     assert "PostgreSQL driver is not installed" in context.warnings[0]
+
+
+def test_recent_searches_returns_human_friendly_list() -> None:
+    context = AgentToolContext(final_k=5, client_timezone="America/Chicago")
+
+    with patch(
+        "src.backend.app.core.search_history.list_search_history",
+        return_value=[
+            SimpleNamespace(
+                id="request-1",
+                request_kind="agent",
+                question="What is RAG?",
+                mode_used="mock",
+                latency_ms=12,
+                source_count=0,
+                created_at=datetime(2026, 4, 24, 12, 0),
+                warning=None,
+            )
+        ],
+    ):
+        output = get_recent_searches(context, limit=5)
+
+    assert output.startswith("Recent searches")
+    assert "1. What is RAG?" in output
+    assert "agent · Apr 24, 2026 at 7:00 AM CDT" in output

@@ -83,7 +83,7 @@ def test_agent_mock_routes_recent_searches_to_recent_search_summary() -> None:
     with (
         patch(
             "src.backend.app.services.agent_service.get_recent_searches",
-            return_value='{"searches": [{"question": "What is RAG?", "mode_used": "mock", "created_at": "2026-04-24T12:00:00Z"}]}',
+            return_value="Recent searches\n1. What is RAG?\n   agent · Apr 24, 2026 at 7:00 AM CDT",
         ),
         patch("src.backend.app.services.agent_service.persist_search_history", return_value="request-123") as persist_history,
         patch("src.backend.app.services.agent_service._generate_request_id", return_value="request-123"),
@@ -95,8 +95,7 @@ def test_agent_mock_routes_recent_searches_to_recent_search_summary() -> None:
     assert persist_history.call_args.kwargs["request_kind"] == "agent"
     assert response.answer.startswith("Recent searches")
     assert "1. What is RAG?" in response.answer
-    assert "What is RAG?" in response.answer
-    assert "mock · Apr 24, 2026 at 12:00 PM" in response.answer
+    assert "agent · Apr 24, 2026 at 7:00 AM CDT" in response.answer
 
 
 def test_agent_handles_tool_failure_gracefully() -> None:
@@ -120,6 +119,53 @@ def test_agent_omits_tool_calls_when_debug_is_false() -> None:
     assert response.route == "corpus_stats"
     assert response.tool_calls == []
     assert response.warnings
+
+
+def test_agent_endpoint_still_returns_when_search_history_persistence_fails() -> None:
+    with (
+        patch("src.backend.app.services.agent_service.get_settings", return_value=SimpleNamespace(database_url="postgresql://example", groq_model_name=None, groq_api_key_present=False)),
+        patch(
+            "src.backend.app.services.agent_service.persist_search_history",
+            side_effect=ModuleNotFoundError("No module named 'psycopg'"),
+        ),
+    ):
+        response = client.post(
+            "/api/agent/chat",
+            json={"question": "What is RAG?", "mode": "mock"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"]
+    assert body["warnings"]
+
+
+def test_live_agent_persists_search_history() -> None:
+    live_response = AgentChatResponse(
+        request_id="request-123",
+        answer="Live answer",
+        route="internal_docs",
+        last_tool="search_internal_docs",
+        warnings=[],
+        sources=[],
+        mode="live",
+    )
+    with (
+        patch("src.backend.app.services.agent_service.get_settings", return_value=SimpleNamespace(groq_model_name="groq", groq_api_key_present=True, database_url="postgresql://example")),
+        patch("src.backend.app.services.agent_service._try_live_agent", return_value=live_response),
+        patch("src.backend.app.services.agent_service.persist_search_history", return_value="request-123") as persist_history,
+        patch("src.backend.app.services.agent_service._generate_request_id", return_value="request-123"),
+    ):
+        response = client.post(
+            "/api/agent/chat",
+            json={"question": "What is RAG?", "mode": "live"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "live"
+    persist_history.assert_called_once()
+    assert persist_history.call_args.kwargs["request_kind"] == "agent"
+    assert persist_history.call_args.kwargs["retrieval"].initial_k == 12
 
 
 def test_live_llm_missing_uses_mock_fallback_without_api_key() -> None:
